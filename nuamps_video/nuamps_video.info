@@ -1,5 +1,14 @@
-name = Nuamps Video
-description = overrides javascript file for lightbox video to play .mov files in a jwplayer
+name = NUAMPS Video
+description = Defines field for video streaming.
 core = 7.x
-dependencies[] = lightbox2
+package = NUAMPS
 
+files[] = nuamps_video.module
+files[] = nuamps_video.install
+
+; Views Handlers
+; files[] = views/nuamps_video_views_handler_argument_target.inc
+; files[] = views/nuamps_video_views_handler_filter_protocol.inc
+
+dependencies[] = jw_player
+dependencies[] = jquery_update

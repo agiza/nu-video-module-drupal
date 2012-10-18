@@ -1,0 +1,38 @@
+<?php
+
+/**
+ * @file
+ * Install file for the nuamps video module.
+ */
+
+/**
+ * Implements hook_field_schema().
+ */
+function nuamps_video_field_schema($field) {
+  return array(
+    'columns' => array(
+      'url' => array(
+        'type' => 'varchar',
+        'length' => 2048, // Maximum URLs length.
+        'not null' => FALSE,
+        'sortable' => TRUE
+      ),
+      'title' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => FALSE,
+        'sortable' => TRUE
+      ),
+      'width' => array(
+        'type' => 'int',
+        'size' => 'medium',
+        'not null' => FALSE
+      ),
+      'height' => array(
+        'type' => 'int',
+        'size' => 'medium',
+        'not null' => FALSE
+      ),
+    ),
+  );
+}

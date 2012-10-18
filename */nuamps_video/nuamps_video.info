@@ -1,5 +1,0 @@
-name = Nuamps Video
-description = overrides javascript file for lightbox video to play .mov files in a jwplayer
-core = 7.x
-dependencies[] = lightbox2
-
