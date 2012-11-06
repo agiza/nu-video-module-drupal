@@ -1,10 +1,5 @@
 <?php
 
-/**
- * @file
- * Defines simple link field types.
- */
-
 define('LINK_EXTERNAL', 'external');
 define('LINK_INTERNAL', 'internal');
 define('LINK_FRONT', 'front');
@@ -27,13 +22,10 @@ function nuamps_video_field_info() {
   return array(
     'nuamps_video_field' => array(
       'label' => t('NUAMPS Video'),
-      'description' => t('Store a title, width, height, and URL in the database to assemble a video.'),
+      'description' => t('Store a width, height, and URL in the database to assemble a video.'),
       'settings' => array(
         'attributes' => _nuamps_video_default_attributes(),
         'url' => 0,
-        'title' => 'optional',
-        'title_value' => '',
-        'title_maxlength' => 128, //patch #1307788 from nmc
         'width' => DEFAULT_WIDTH,
         'height' => DEFAULT_HEIGHT,
         'enable_tokens' => 1,
@@ -42,9 +34,6 @@ function nuamps_video_field_info() {
       'instance_settings' => array(
         'attributes' => _nuamps_video_default_attributes(),
         'url' => 0,
-        'title' => 'optional',
-        'title_value' => '',
-        'title_maxlength' => 128, // patch #1307788 from nmc
         'width' => DEFAULT_WIDTH,
         'height' => DEFAULT_HEIGHT,
         'enable_tokens' => 1,
@@ -64,55 +53,14 @@ function nuamps_video_field_info() {
  * Implements hook_field_instance_settings_form().
  */
 function nuamps_video_field_instance_settings_form($field, $instance) {
-  $form = array(
-    '#element_validate' => array('nuamps_video_field_settings_form_validate'),
-  );
-  
-  $form['validate_url'] = array(
-    '#type' => 'checkbox',
-    '#title' => t('Validate URL'),
-    '#default_value' => isset($instance['settings']['validate_url']) && ($instance['settings']['validate_url'] !== '') ? $instance['settings']['validate_url'] : TRUE,
-    '#description' => t('If checked, the URL field will be verified as a valid URL during validation.'),
-  );
 
-  $form['url'] = array(
-    '#type' => 'checkbox',
-    '#title' => t('Optional URL'),
-    '#default_value' => isset($instance['settings']['url']) ? $instance['settings']['url'] : '',
-    '#return_value' => 'optional',
-    '#description' => t('If checked, the URL field is optional and submitting a title alone will be acceptable. If the URL is omitted, the title will be displayed as plain text.'),
-  );
+  // $form = array(
+  //   '#element_validate' => array('nuamps_video_field_settings_form_validate'),
+  // );
 
-  $title_options = array(
-    'optional' => t('Optional Title'),
-    'required' => t('Required Title'),
-    'value' => t('Static Title'),
-    'none' => t('No Title'),
-  );
+  $form = array();
 
-  $form['title'] = array(
-    '#type' => 'radios',
-    '#title' => t('Video Title'),
-    '#default_value' => isset($instance['settings']['title']) ? $instance['settings']['title'] : 'optional',
-    '#options' => $title_options,
-    '#description' => t('If the video title is optional or required, a field will be displayed to the end user. If the video title is static, the video will always use the same title. If <a href="http://drupal.org/project/token">token module</a> is installed, the static title value may use any other node field as its value. Static and token-based titles may include most inline XHTML tags such as <em>strong</em>, <em>em</em>, <em>img</em>, <em>span</em>, etc.'),
-  );
-
-  $form['title_value'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Static title'),
-    '#default_value' => isset($instance['settings']['title_value']) ? $instance['settings']['title_value'] : '',
-    '#description' => t('This title will always be used if &ldquo;Static Title&rdquo; is selected above.'),
-  );
-
-  $form['title_maxlength'] = array( // patch #1307788 from nmc
-    '#type' => 'textfield',
-    '#title' => t('Max length of title field'),
-    '#default_value' => isset($instance['settings']['title_maxlength']) ? $instance['settings']['title_maxlength'] : '128',
-    '#description' => t('Set a maximum length on the title field (applies only if video Title is optional or required).  The maximum limit is 255 characters.'),
-    '#maxlength' => 3,
-    '#size' => 3,
-    );
+  $form['#element_validate'] = array('nuamps_video_field_settings_form_validate');
 
   $form['width'] = array(
     '#type' => 'textfield',
@@ -126,6 +74,21 @@ function nuamps_video_field_instance_settings_form($field, $instance) {
     '#title' => t('Static height'),
     '#default_value' => DEFAULT_HEIGHT,
     '#description' => t('Enter a height for the video.'),
+  );
+
+  $form['display'] = array(
+    '#tree' => TRUE,
+  );
+
+  $form['attributes'] = array(
+    '#tree' => TRUE,
+  );
+
+  $form['attributes']['class'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Additional CSS Class'),
+    '#description' => t('When output, this video will have this class attribute. Multiple classes should be separated by spaces.'),
+    '#default_value' => empty($instance['settings']['attributes']['class']) ? '' : $instance['settings']['attributes']['class'],
   );
 
   if (module_exists('token')) {
@@ -157,41 +120,6 @@ function nuamps_video_field_instance_settings_form($field, $instance) {
     );
   }
 
-  $form['display'] = array(
-    '#tree' => TRUE,
-  );
-  $form['attributes'] = array(
-    '#tree' => TRUE,
-  );
-  $form['attributes']['rel'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Rel Attribute'),
-    '#description' => t('When output, this video will have this rel attribute. The most common usage is <a href="http://en.wikipedia.org/wiki/Nofollow">rel=&quot;nofollow&quot;</a> which prevents some search engines from spidering entered links.'),
-    '#default_value' => empty($instance['settings']['attributes']['rel']) ? '' : $instance['settings']['attributes']['rel'],
-    '#field_prefix' => 'rel = "',
-    '#field_suffix' => '"',
-    '#size' => 20,
-  );
-  $form['attributes']['class'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Additional CSS Class'),
-    '#description' => t('When output, this video will have this class attribute. Multiple classes should be separated by spaces.'),
-    '#default_value' => empty($instance['settings']['attributes']['class']) ? '' : $instance['settings']['attributes']['class'],
-  );
-  $form['attributes']['configurable_title'] = array(
-    '#title' => t("Allow the user to enter a video 'title' attribute"),
-    '#type' => 'checkbox',
-    '#default_value' => empty($instance['settings']['attributes']['configurable_title']) ? '' : $instance['settings']['attributes']['configurable_title'],
-  );
-  $form['attributes']['title'] = array(
-    '#title' => t("Default link 'title' Attribute"),
-    '#type' => 'textfield',
-    '#description' => t('When output, video will use this "title" attribute if the user does not provide one and when different from the video text. Read <a href="http://www.w3.org/TR/WCAG10-HTML-TECHS/#links">WCAG 1.0 Guidelines</a> for links comformances. Tokens values will be evaluated.'),
-    '#default_value' => empty($instance['settings']['attributes']['title']) ? '' : $instance['settings']['attributes']['title'],
-    '#field_prefix' => 'title = "',
-    '#field_suffix' => '"',
-    '#size' => 20,
-  );
   return $form;
 }
 
@@ -199,17 +127,8 @@ function nuamps_video_field_instance_settings_form($field, $instance) {
  * Validate the field settings form.
  */
 function nuamps_video_field_settings_form_validate($element, &$form_state, $complete_form) {
-  if ($form_state['values']['instance']['settings']['title'] === 'value'
-      && empty($form_state['values']['instance']['settings']['title_value'])) {
-    form_set_error('title_value', t('A default title must be provided if the title is a static value.'));
-  }
-  if (empty($form_state['values']['instance']['settings']['title_maxlength'])) {     // patch #1307788 from nmc
-    form_set_value($element['title_maxlength'], '128', $form_state);
-  } elseif (!is_numeric($form_state['values']['instance']['settings']['title_maxlength'])) {
-    form_set_error('title_maxlength', t('The max length of the video title must be numeric.'));
-  } elseif ($form_state['values']['instance']['settings']['title_maxlength'] > 255) {
-    form_set_error('title_maxlength', t('The max length of the video title cannot be greater than 255 characters.'));
-  } elseif (!isset($form_state['values']['instance']['settings']['width'])) {
+
+  if (!isset($form_state['values']['instance']['settings']['width'])) {
     form_set_error('width', t('The width must be set.'));
   } elseif (!isset($form_state['values']['instance']['settings']['height'])) {
     form_set_error('height', t('The height must be set.'));
@@ -248,34 +167,17 @@ function nuamps_video_field_load($entity_type, $entities, $field, $instances, $l
  */
 function nuamps_video_field_validate($entity_type, $entity, $field, $instance, $langcode, $items, &$errors) {
   $optional_field_found = FALSE;
-  if ($instance['settings']['validate_url'] !== 0 || is_null($instance['settings']['validate_url']) || !isset($instance['settings']['validate_url'])) {
-    foreach ($items as $delta => $value) {
-      _nuamps_video_validate($items[$delta], $delta, $field, $entity, $instance, $optional_field_found);
+
+  foreach ($items as $delta => $value) {
+    _nuamps_video_validate($items[$delta], $delta, $field, $entity, $instance, $optional_field_found);
     }
-  }
 
-  if ($instance['settings']['url'] === 'optional' && $instance['settings']['title'] === 'optional' && $instance['required'] && !$optional_field_found) {
-    form_set_error($field['field_name'] .'][0][title', t('At least one title or URL must be entered.'));
-  }
-
-  if (!isset($instance['settings']['width'])) {
-    form_set_error($field['field_name'] .'][0][width', t('The width must be set.'));
-  }
-  if (!isset($instance['settings']['height'])) {
-    form_set_error($field['field_name'] .'][0][height', t('The height must be set.'));
-  }
-  if (!is_numeric($instance['settings']['width'])) {
-    form_set_error($field['field_name'] .'][0][width', t('The width must be numeric.'));
-  }
-  if (!is_numeric($instance['settings']['height'])) {
-    form_set_error($field['field_name'] .'][0][height', t('The height must be numeric.'));
-  }
-  if ($instance['settings']['width'] < 0) {
-    form_set_error($field['field_name'] .'][0][width', t('The width must be greater than 0 .'));
-  }
-  if ($instance['settings']['height'] < 0) {
-    form_set_error($field['field_name'] .'][0][height', t('The height must be greater than 0 .'));
-  }
+  if (!isset($instance['settings']['width'])) { form_set_error($field['field_name'] .'][0][width', t('The width must be set.')); }
+  if (!isset($instance['settings']['height'])) { form_set_error($field['field_name'] .'][0][height', t('The height must be set.')); }
+  if (!is_numeric($instance['settings']['width'])) { form_set_error($field['field_name'] .'][0][width', t('The width must be numeric.')); }
+  if (!is_numeric($instance['settings']['height'])) { form_set_error($field['field_name'] .'][0][height', t('The height must be numeric.')); }
+  if ($instance['settings']['width'] < 0) { form_set_error($field['field_name'] .'][0][width', t('The width must be greater than 0 .')); }
+  if ($instance['settings']['height'] < 0) { form_set_error($field['field_name'] .'][0][height', t('The height must be greater than 0 .')); }
 }
 
 /**
@@ -367,37 +269,12 @@ function _nuamps_video_process(&$item, $delta = 0, $field, $entity) {
  * Validates that the video field has been entered properly.
  */
 function _nuamps_video_validate(&$item, $delta, $field, $node, $instance, &$optional_field_found) {
-  if ($item['url']
-      && !(isset($instance['default_value'][$delta]['url'])
-      && $item['url'] === $instance['default_value'][$delta]['url']
-      && !$instance['required'])) {
-    // Validate the url.
-    if (nuamps_video_validate_url(trim($item['url'])) == FALSE) {
-      form_set_error($field['field_name'] .']['. $delta .'][url', t('Not a valid URL.'));
-    }
-    // Require a title for the video if necessary.
-    if ($instance['settings']['title'] == 'required' && strlen(trim($item['title'])) == 0) {
-      form_set_error($field['field_name'] .']['. $delta .'][title', t('Titles are required for all links.'));
-    }
+  if ($item['url'] && !(isset($instance['default_value'][$delta]['url']) && $item['url'] === $instance['default_value'][$delta]['url'] && !$instance['required'])) {
+    if (nuamps_video_validate_url(trim($item['url'])) == FALSE) { form_set_error($field['field_name'] .']['. $delta .'][url', t('Not a valid URL.')); }
   }
-  // Require a url if we have a title.
-  if ($instance['settings']['url'] !== 'optional'
-      && strlen(isset($item['title']) ? $item['title'] : NULL) > 0
-      && strlen(trim($item['url'])) == 0) {
-    form_set_error($field['field_name'] .']['. $delta .'][url', t('You cannot enter a title without a link url.'));
-  }
-  // In a totally bizzaro case, where URLs and titles are optional but the field is required, ensure there is at least one video.
-  if ($instance['settings']['url'] === 'optional'
-      && $instance['settings']['title'] === 'optional'
-      && (strlen(trim($item['url'])) !== 0 || strlen(trim($item['title'])) !== 0)) {
-    $optional_field_found = TRUE;
-  }
+
   // Require entire field
-  if ($instance['settings']['url'] === 'optional'
-    && $instance['settings']['title'] === 'optional'
-    && $instance['required'] == 1
-    && !$optional_field_found
-    && isset($instance['id'])) {
+  if ($instance['required'] == 1 && !$optional_field_found && isset($instance['id'])) {
     form_set_error($instance['field_name'] .'][0][title',
                    t('At least one title or URL must be entered.'));
   }
@@ -417,9 +294,9 @@ function _nuamps_video_validate(&$item, $delta, $field, $node, $instance, &$opti
  */
 function _nuamps_video_sanitize(&$item, $delta, &$field, $instance, &$node) {
   // Don't try to process empty video.
-  if (empty($item['url']) && empty($item['title'])) return;
+  if (empty($item['url'])) return;
 
-if (!preg_match("#^rtmp://.+(mov|mp4|flv)#", $item['url'])) return;
+  if (!preg_match("#^(http|rtmp)://.+(mov|flv)#", $item['url'])) return;
 
   // Replace URL tokens.
   if (isset($instance['settings']['enable_tokens']) && $instance['settings']['enable_tokens']) {
@@ -464,17 +341,19 @@ if (!preg_match("#^rtmp://.+(mov|mp4|flv)#", $item['url'])) return;
                                   'absolute' => TRUE));
   $item['display_url'] = $display_url;
 
-  // Use the title defined at the instance level.
-  if ($instance['settings']['title'] == 'value' && strlen(trim($instance['settings']['title_value']))) {
-    $title = $instance['settings']['title_value'];
-  }
-  // Use the title defined by the user at the widget level.
-  else if (isset($item['title'])) {
-    $title = $item['title'];
-  }
-  else {
-    $title = '';
-  }
+  // // Use the title defined at the instance level.
+  // if ($instance['settings']['title'] == 'value' && strlen(trim($instance['settings']['title_value']))) {
+  //   $title = $instance['settings']['title_value'];
+  // }
+  // // Use the title defined by the user at the widget level.
+  // else if (isset($item['title'])) {
+  //   $title = $item['title'];
+  // }
+  // else {
+  //   $title = '';
+  // }
+  
+  $title = '';
 
   // Replace tokens.
   if ($title && ($instance['settings']['title'] == 'value' || $instance['settings']['enable_tokens'])) {
@@ -605,23 +484,15 @@ function nuamps_video_field_process($element, $form_state, $complete_form) {
     '#type' => 'textfield',
     '#maxlength' => LINK_URL_MAX_LENGTH,
     '#title' => t('URL'),
-    '#required' => ($element['#delta'] == 0 && $settings['url'] !== 'optional') ? $element['#required'] : FALSE,
+    '#description' => t('Enter URL for jwplayer.'),
+    '#required' => TRUE,
     '#default_value' => isset($element['#value']['url']) ? $element['#value']['url'] : NULL,
   );
-  if ($settings['title'] !== 'none' && $settings['title'] !== 'value') {
-    $element['title'] = array(
-      '#type' => 'textfield',
-      '#maxlength' => $settings['title_maxlength'],  // patch #1307788 from nmc
-      '#title' => t('Title'),
-      '#description' => t('The video title is limited to '.$settings['title_maxlength'].' characters maximum.'), // patch #1307788 from nmc
-      '#required' => ($settings['title'] == 'required' && (($element['#delta'] == 0 && $element['#required']) || !empty($element['#value']['url']))) ? TRUE : FALSE, // davereids patch from jan 2011
-      '#default_value' => isset($element['#value']['title']) ? $element['#value']['title'] : NULL,
-    );
-  }
   $element['width'] = array(
     '#type' => 'int',
     '#maxlength' => 5,
     '#title' => t('Width'),
+    '#description' => t('Enter width of jwplayer.'),
     '#required' => TRUE,
     '#default_value' => isset($element['#value']['width']) ? $element['#value']['width'] : DEFAULT_WIDTH,
   );
@@ -629,6 +500,7 @@ function nuamps_video_field_process($element, $form_state, $complete_form) {
     '#type' => 'int',
     '#maxlength' => 5,
     '#title' => t('Width'),
+    '#description' => t('Enter height of jwplayer.'),
     '#required' => TRUE,
     '#default_value' => isset($element['#value']['height']) ? $element['#value']['height'] : DEFAULT_HEIGHT,
   );
@@ -637,19 +509,13 @@ function nuamps_video_field_process($element, $form_state, $complete_form) {
   if (!is_array($settings['attributes'])) {
     $settings['attributes'] = array();
   }
+
   // Add default attributes.
   $settings['attributes'] += _nuamps_video_default_attributes();
   $attributes = isset($element['#value']['attributes']) ? $element['#value']['attributes'] : $settings['attributes'];
-  if (!empty($settings['attributes']['configurable_title']) && $settings['attributes']['configurable_title'] == 1) {
-    $element['attributes']['title'] = array(
-      '#type' => 'textfield',
-      '#title' => t('Video "title" attribute'),
-      '#default_value' => isset($attributes['title']) ? $attributes['title'] : '',
-      '#field_prefix' => 'title = "',
-      '#field_suffix' => '"',
-    );
-  }
 
+  // not sure if this is necsessary? - Al
+  
   // To prevent an extra required indicator, disable the required flag on the
   // base element since all the sub-fields are already required if desired.
   $element['#required'] = FALSE; // davereids patch from jan 2011
@@ -688,7 +554,6 @@ function nuamps_video_field_formatter_view($entity_type, $entity, $field, $insta
  */
 function theme_nuamps_video_formatter_nuamps_video_default($vars) {
   $nuamps_video_options = $vars['element'];
-  unset($nuamps_video_options['element']['title']);
   unset($nuamps_video_options['element']['url']);
   unset($nuamps_video_options['element']['width']);
   unset($nuamps_video_options['element']['height']);
@@ -705,7 +570,7 @@ function theme_nuamps_video_formatter_nuamps_video_default($vars) {
     return _nuamps_video_markup($vars['element']['title'], $vars['element']['url'], $nuamps_video_options['attributes']['class']);
   }
   elseif (!empty($vars['element']['url'])) {
-    return _nuamps_video_markup(NULL, $vars['element']['url'], $nuamps_video_options['attributes']['class']);  }
+    return _nuamps_video_markup(NULL, $vars['element']['url'], $nuamps_video_options['attributes']['class'], $vars['element']['width'], $vars['element']['height']);  }
 }
 
 function _nuamps_video_markup($title = NULL, $url = NULL, $classes = array(), $width = DEFAULT_WIDTH, $height = DEFAULT_HEIGHT) {
@@ -738,7 +603,6 @@ function nuamps_video_token_list($type = 'all') {
     $tokens = array();
 
     $tokens['nuamps_video']['url'] = t("Video URL");
-    $tokens['nuamps_video']['title'] = t("Video title");
     $tokens['nuamps_video']['view'] = t("Formatted video");
 
     return $tokens;
@@ -750,7 +614,6 @@ function nuamps_video_token_values($type, $object = NULL) {
     $item = $object[0];
 
     $tokens['url'] = $item['url'];
-    $tokens['title'] = $item['title'];
     $tokens['view'] = isset($item['view']) ? $item['view'] : '';
 
     return $tokens;
