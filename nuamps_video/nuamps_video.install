@@ -17,12 +17,6 @@ function nuamps_video_field_schema($field) {
         'not null' => FALSE,
         'sortable' => TRUE
       ),
-      'title' => array(
-        'type' => 'varchar',
-        'length' => 255,
-        'not null' => FALSE,
-        'sortable' => TRUE
-      ),
       'width' => array(
         'type' => 'int',
         'size' => 'medium',
