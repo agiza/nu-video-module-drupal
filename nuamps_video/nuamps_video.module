@@ -106,7 +106,7 @@ function nuamps_video_field_instance_settings_form($field, $instance) {
     '#description' => t('When output, this video will have this class attribute. Multiple classes should be separated by spaces.'),
     '#default_value' => DEFAULT_CLASS,
   );
-  /*
+  
   if (module_exists('token')) {
     // Add token module replacements fields
     $form['tokens'] = array(
@@ -136,7 +136,7 @@ function nuamps_video_field_instance_settings_form($field, $instance) {
     );
 
   }
-  */
+  
   return $form;
 }
 
@@ -185,7 +185,10 @@ function _nuamps_video_validate(&$item, $delta, $field, $node, $instance, &$opti
 function nuamps_video_validate_url($text) {
 
   // TODO: CHANGE THIS FUNCTION SO IT ACTUALLY MAKES SENSE....
-
+    
+  return TRUE;  
+  
+  /*
   $LINK_ICHARS_DOMAIN = (string) html_entity_decode(implode("", array( // @TODO completing letters ...
     "&#x00E6;", // æ
     "&#x00C6;", // Æ
@@ -285,6 +288,8 @@ function nuamps_video_validate_url($text) {
   if (preg_match($internal_pattern_file, $text)) { return LINK_INTERNAL; }
 
   return FALSE;
+  */
+    
 }
 
 /**
@@ -323,11 +328,11 @@ function nuamps_video_field_is_empty($item, $field) {
  * Implements hook_field_load().
  */
 function nuamps_video_field_load($entity_type, $entities, $field, $instances, $langcode, &$items, $age) {
-  // foreach ($entities as $id => $entity) {
-  //   foreach ($items[$id] as $delta => $item) {
-  //     $items[$id][$delta]['attributes'] = _nuamps_video_load($field, $item, $instances[$id]);
-  //   }
-  // }
+   foreach ($entities as $id => $entity) {
+     foreach ($items[$id] as $delta => $item) {
+       $items[$id][$delta]['attributes'] = _nuamps_video_load($field, $item, $instances[$id]);
+     }
+   }
 }
 
 /**
@@ -651,9 +656,11 @@ function nuamps_video_field_formatter_info() {
  */
 function nuamps_video_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display) {
   $elements = array();
+  $settings = $instance['settings'];
+  
   foreach ($items as $delta => $item) {
     $elements[$delta] = array(
-      '#markup' => theme('nuamps_video_formatter_'. $display['type'], array('element' => $item, 'field' => $instance)),
+      '#markup' => theme('nuamps_video_formatter_'. $display['type'], array('element' => $item, 'field' => $instance, 'settings' => $settings)),
     );
   }
   return $elements;
@@ -675,9 +682,7 @@ function theme_nuamps_video_formatter_nuamps_video_default($vars) {
 
   drupal_add_js(base_path() . "sites/all/libraries/" . "jwplayer/jwplayer.js", 'file');
 
-  // $vars['element']['width']
-  // $vars['element']['height']
-  return _nuamps_video_markup(NULL, $vars['element']['url'], '', 180, 120);  
+  return _nuamps_video_markup(NULL, $vars['element']['url'], '', $vars['settings']['width'], $vars['settings']['height']);  
 }
 
 function _nuamps_video_markup($title = NULL, $url = NULL, $classes = array(), $width = DEFAULT_WIDTH, $height = DEFAULT_HEIGHT) {
