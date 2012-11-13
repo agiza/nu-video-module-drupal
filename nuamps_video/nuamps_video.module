@@ -1,25 +1,25 @@
 <?php
 
-define('LINK_EXTERNAL', 'external');
-define('LINK_INTERNAL', 'internal');
-define('LINK_FRONT', 'front');
-define('LINK_EMAIL', 'email');
-define('LINK_NEWS', 'news');
-define('LINK_DOMAINS', 'aero|arpa|asia|biz|com|cat|coop|edu|gov|info|int|jobs|mil|museum|name|nato|net|org|pro|travel|mobi|local');
 
+/*
+ * TODO
+ * 
+ * Create checbox to allow user to override width and height for 
+ * specific content.
+ * 
+ * Create radio button for user to select default/fallback format.
+ * 
+ * Split Code into fields, entity, and views inc files.
+ * 
+ * Comment!
+ * 
+ */
+
+//define('HOOK', 'nuamps_video');
 define('DEFAULT_WIDTH', 640);
 define('DEFAULT_HEIGHT', 360);
 define('DEFAULT_CLASS', 'nuamps-video');
-
-/**
- * Maximum URLs length - needs to match value in nuamps_video.install.
- */
-define('LINK_URL_MAX_LENGTH', 2048);
-
-
-/**********************************************
-             Field Type API Hooks   
- **********************************************/
+define('VIDEO_URL_MAX_LENGTH', 2048); // must match value in nuamps_video.install
 
 /**
  * Implements hook_field_info().
@@ -27,7 +27,6 @@ define('LINK_URL_MAX_LENGTH', 2048);
  * Makes stuff appear in dropdown Menu when creating New Fields
  */
 function nuamps_video_field_info() {
-  //        'attributes' => _nuamps_video_default_attributes(),
   return array(
     'nuamps_video_field' => array(
       'label' => t('NUAMPS Video'),
@@ -81,30 +80,25 @@ function nuamps_video_field_instance_settings_form($field, $instance) {
   $form['width'] = array(
     '#type' => 'textfield',
     '#title' => t('JWPlayer Width'),
-    '#default_value' => $settings['width'], //DEFAULT_WIDTH,
+    '#default_value' => $settings['width'],
     '#description' => t('Enter a width for the video.'),
   );
 
   $form['height'] = array(
     '#type' => 'textfield',
     '#title' => t('JWPlayer Height'),
-    '#default_value' => $settings['height'], //DEFAULT_HEIGHT,
+    '#default_value' => $settings['height'],
     '#description' => t('Enter a height for the video.'),
   );
 
-  $form['display'] = array(
-    '#tree' => TRUE,
-  );
-
-  $form['attributes'] = array(
-    '#tree' => TRUE,
-  );
+  $form['display'] = array('#tree' => TRUE);
+  $form['attributes'] = array('#tree' => TRUE);
 
   $form['attributes']['class'] = array(
     '#type' => 'textfield',
     '#title' => t('Additional CSS Class'),
-    '#description' => t('When output, this video will have this class attribute. Multiple classes should be separated by spaces.'),
     '#default_value' => DEFAULT_CLASS,
+    '#description' => t('When output, this video will have this class attribute. Multiple classes should be separated by spaces.'),      
   );
   
   if (module_exists('token')) {
@@ -146,11 +140,15 @@ function nuamps_video_field_instance_settings_form($field, $instance) {
  * Validate field values and error if user adds wrong values
  */
 function nuamps_video_field_validate($entity_type, $entity, $field, $instance, $langcode, $items, &$errors) {
-  $optional_field_found = FALSE;
+  //$optional_field_found = FALSE;
 
-  foreach ($items as $delta => $value) {
-    _nuamps_video_validate($items[$delta], $delta, $field, $entity, $instance, $optional_field_found);
-  }
+  //foreach ($items as $delta => $value) {
+    //($items[$delta], $delta, $field, $entity, $instance, $optional_field_found);
+    // check if WIDTH AND FIELD ARE NOT ZERO
+    //    form_set_error($field['field_name'] .']['. $delta .'][url', t('Not a valid URL.')); 
+    //    form_set_error($instance['field_name'] .'][0][title', t('At least one title or URL must be entered.'));
+
+  //}
 
   if (!isset($instance['settings']['width'])) { form_set_error($field['field_name'] .'][0][width', t('The width must be set.')); }
   if (!isset($instance['settings']['height'])) { form_set_error($field['field_name'] .'][0][height', t('The height must be set.')); }
@@ -163,133 +161,38 @@ function nuamps_video_field_validate($entity_type, $entity, $field, $instance, $
 /**
  * Validates that the video field has been entered properly.
  */
-function _nuamps_video_validate(&$item, $delta, $field, $node, $instance, &$optional_field_found) {
-  //&& $item['url'] === $instance['default_value'][$delta]['url'] && !$instance['required']
-    /*
-    if (isset($item['url'])) {
-        if (nuamps_video_validate_url(trim($item['url'])) == FALSE) { 
-            form_set_error($field['field_name'] .']['. $delta .'][url', t('Not a valid URL.')); 
-        }
-    }
-    * 
-    */
-  /*
-  // Require entire field
-  if ($instance['required'] == 1 && !$optional_field_found && isset($instance['id'])) {
-    form_set_error($instance['field_name'] .'][0][title', t('At least one title or URL must be entered.'));
-  }
-  
-  */
-}
-
 function nuamps_video_validate_url($text) {
 
   // TODO: CHANGE THIS FUNCTION SO IT ACTUALLY MAKES SENSE....
     
   return TRUE;  
-  
-  /*
-  $LINK_ICHARS_DOMAIN = (string) html_entity_decode(implode("", array( // @TODO completing letters ...
-    "&#x00E6;", // æ
-    "&#x00C6;", // Æ
-    "&#x00C0;", // À
-    "&#x00E0;", // à
-    "&#x00C1;", // Á
-    "&#x00E1;", // á
-    "&#x00C2;", // Â
-    "&#x00E2;", // â
-    "&#x00E5;", // å
-    "&#x00C5;", // Å
-    "&#x00E4;", // ä
-    "&#x00C4;", // Ä
-    "&#x00C7;", // Ç
-    "&#x00E7;", // ç
-    "&#x00D0;", // Ð
-    "&#x00F0;", // ð
-    "&#x00C8;", // È
-    "&#x00E8;", // è
-    "&#x00C9;", // É
-    "&#x00E9;", // é
-    "&#x00CA;", // Ê
-    "&#x00EA;", // ê
-    "&#x00CB;", // Ë
-    "&#x00EB;", // ë
-    "&#x00CE;", // Î
-    "&#x00EE;", // î
-    "&#x00CF;", // Ï
-    "&#x00EF;", // ï
-    "&#x00F8;", // ø
-    "&#x00D8;", // Ø
-    "&#x00F6;", // ö
-    "&#x00D6;", // Ö
-    "&#x00D4;", // Ô
-    "&#x00F4;", // ô
-    "&#x00D5;", // Õ
-    "&#x00F5;", // õ
-    "&#x0152;", // Œ
-    "&#x0153;", // œ
-    "&#x00FC;", // ü
-    "&#x00DC;", // Ü
-    "&#x00D9;", // Ù
-    "&#x00F9;", // ù
-    "&#x00DB;", // Û
-    "&#x00FB;", // û
-    "&#x0178;", // Ÿ
-    "&#x00FF;", // ÿ 
-    "&#x00D1;", // Ñ
-    "&#x00F1;", // ñ
-    "&#x00FE;", // þ
-    "&#x00DE;", // Þ
-    "&#x00FD;", // ý
-    "&#x00DD;", // Ý
-    "&#x00BF;", // ¿
-  )), ENT_QUOTES, 'UTF-8');
 
-  $LINK_ICHARS = $LINK_ICHARS_DOMAIN . (string) html_entity_decode(implode("", array(
-    "&#x00DF;", // ß
-  )), ENT_QUOTES, 'UTF-8');
-  $allowed_protocols = variable_get('filter_allowed_protocols', array('http', 'https', 'ftp', 'news', 'nntp', 'telnet', 'mailto', 'irc', 'ssh', 'sftp', 'webcal'));
+}
 
-  // Starting a parenthesis group with (?: means that it is grouped, but is not captured
-  $protocol = '((?:'. implode("|", $allowed_protocols) .'):\/\/)';
-  $authentication = "(?:(?:(?:[\w\.\-\+!$&'\(\)*\+,;=" . $LINK_ICHARS . "]|%[0-9a-f]{2})+(?::(?:[\w". $LINK_ICHARS ."\.\-\+%!$&'\(\)*\+,;=]|%[0-9a-f]{2})*)?)?@)";
-  $domain = '(?:(?:[a-z0-9' . $LINK_ICHARS_DOMAIN . ']([a-z0-9'. $LINK_ICHARS_DOMAIN . '\-_\[\]])*)(\.(([a-z0-9' . $LINK_ICHARS_DOMAIN . '\-_\[\]])+\.)*('. LINK_DOMAINS .'|[a-z]{2}))?)';
-  $ipv4 = '(?:[0-9]{1,3}(\.[0-9]{1,3}){3})';
-  $ipv6 = '(?:[0-9a-fA-F]{1,4}(\:[0-9a-fA-F]{1,4}){7})';
-  $port = '(?::([0-9]{1,5}))';
+/**
+ * Forms a valid URL if possible from an entered address.
+ * Trims whitespace and automatically adds an http:// to addresses without a protocol specified
+ *
+ * @param string $url
+ * @param string $protocol The protocol to be prepended to the url if one is not specified
+ */
+function nuamps_video_cleanup_url($url, $protocol = "http") {
+  $url = trim($url);
+  $type = nuamps_video_validate_url($url);
 
-  // Pattern specific to external links.
-  $external_pattern = '/^'. $protocol .'?'. $authentication .'?('. $domain .'|'. $ipv4 .'|'. $ipv6 .' |localhost)'. $port .'?';
+//  if ($type === LINK_EXTERNAL) {
+//    // Check if there is no protocol specified.
+//    $protocol_match = preg_match("/^([a-z0-9][a-z0-9\.\-_]*:\/\/)/i", $url);
+//    if (empty($protocol_match)) {
+//      // But should there be? Add an automatic http:// if it starts with a domain name.
+//      $domain_match = preg_match('/^(([a-z0-9]([a-z0-9\-_]*\.)+)('. LINK_DOMAINS .'|[a-z]{2}))/i', $url);
+//      if (!empty($domain_match)) {
+//        $url = $protocol ."://". $url;
+//      }
+//    }
+//  }
 
-  // Pattern specific to internal links.
-  $internal_pattern = "/^(?:[a-z0-9". $LINK_ICHARS ."_\-+\[\]]+)";
-  $internal_pattern_file = "/^(?:[a-z0-9". $LINK_ICHARS ."_\-+\[\]\.]+)$/i";
-
-  $directories = "(?:\/[a-z0-9". $LINK_ICHARS ."_\-\.~+%=&,$'#!():;*@\[\]]*)*";
-  // Yes, four backslashes == a single backslash.
-  $query = "(?:\/?\?([?a-z0-9". $LINK_ICHARS ."+_|\-\.~\/\\\\%=&,$'():;*@\[\]{} ]*))";
-  $anchor = "(?:#[a-z0-9". $LINK_ICHARS ."_\-\.~+%=&,$'():;*@\[\]\/\?]*)";
-
-  // The rest of the path for a standard URL.
-  $end = $directories .'?'. $query .'?'. $anchor .'?'.'$/i';
-
-  $message_id = '[^@].*@'. $domain;
-  $newsgroup_name = '(?:[0-9a-z+-]*\.)*[0-9a-z+-]*';
-  $news_pattern = '/^news:('. $newsgroup_name .'|'. $message_id .')$/i';
-
-  $user = '[a-zA-Z0-9'. $LINK_ICHARS .'_\-\.\+\^!#\$%&*+\/\=\?\`\|\{\}~\'\[\]]+';
-  $email_pattern = '/^mailto:'. $user .'@'.'(?:'. $domain .'|'. $ipv4 .'|'. $ipv6 .'|localhost)'. $query .'?$/';
-
-  if (strpos($text, '<front>') === 0) { return LINK_FRONT; }
-  if (in_array('mailto', $allowed_protocols) && preg_match($email_pattern, $text)) { return LINK_EMAIL; }
-  if (in_array('news', $allowed_protocols) && preg_match($news_pattern, $text)) { return LINK_NEWS; }
-  if (preg_match($internal_pattern . $end, $text)) { return LINK_INTERNAL; }
-  if (preg_match($external_pattern . $end, $text)) { return LINK_EXTERNAL; }
-  if (preg_match($internal_pattern_file, $text)) { return LINK_INTERNAL; }
-
-  return FALSE;
-  */
-    
+  return $url;
 }
 
 /**
@@ -346,16 +249,6 @@ function nuamps_video_field_presave($entity_type, $entity, $field, $instance, $l
     // Trim whitespace from URL.
     $item['url'] = trim($item['url']);
 
-    // if no attributes are set then make sure $item['attributes'] is an empty array - this lets $field['attributes'] override it.
-    // if (empty($item['attributes'])) {
-    //   $item['attributes'] = array();
-    // }
-
-    // Serialize the attributes array.
-    // if (!is_string($item['attributes'])) {
-    //   $item['attributes'] = serialize($item['attributes']);
-    // }
-
     // Don't save an invalid default value (e.g. 'http://').
     if ((isset($field['widget']['default_value'][$delta]['url']) && $item['url'] == $field['widget']['default_value'][$delta]['url']) && is_object($node)) {
       if (!nuamps_video_validate_url($item['url'])) { unset($item['url']); }
@@ -363,14 +256,6 @@ function nuamps_video_field_presave($entity_type, $entity, $field, $instance, $l
   
   }
 }
-
-// /**
-//  * Prepares the item attributes and url for storage.
-//  */
-// function _nuamps_video_process(&$item, $delta = 0, $field, $entity) {
-
-// }
-
 
 /**
  * Implements hook_field_prepare_view().
@@ -413,17 +298,7 @@ function nuamps_video_field_widget_form(&$form, &$form_state, $field, $instance,
  * Unpacks the item attributes for use.
  */
 function _nuamps_video_load($field, $item, $instance) {
-  /*
-  if (isset($item['attributes'])) {
-    return unserialize($item['attributes']);
-  }
-  else if (isset($instance['settings']['attributes'])) {
-    return $instance['settings']['attributes'];
-  }
-  else {
-    return $field['settings']['attributes'];
-  }
-  */
+
 }
 
 /**
@@ -554,16 +429,6 @@ function theme_nuamps_video_field($vars) {
   return $output;
 }
 
-/*
-function _nuamps_video_default_attributes() {
-  return array(
-    'class' => 'nuamps-video',
-    'width' => DEFAULT_WIDTH,
-    'height' => DEFAULT_HEIGHT,
-  );
-}
-*/
-
 /**
  * Implements hook_element_info().
  */
@@ -593,7 +458,7 @@ function nuamps_video_field_process($element, $form_state, $complete_form) {
 
   $element['url'] = array(
     '#type' => 'textfield',
-    '#maxlength' => LINK_URL_MAX_LENGTH,
+    '#maxlength' => VIDEO_URL_MAX_LENGTH,
     '#title' => t('URL'),
     '#description' => t('Enter URL for jwplayer.'),
     '#required' => FALSE,
@@ -616,17 +481,6 @@ function nuamps_video_field_process($element, $form_state, $complete_form) {
     '#required' => TRUE,
     '#default_value' => isset($element['#value']['height']) ? $element['#value']['height'] : DEFAULT_HEIGHT,
   );
-
-  // Initialize field attributes as an array if it is not an array yet.
-  // if (!is_array($settings['attributes'])) {
-  //   $settings['attributes'] = array();
-  // }
-
-  // Add default attributes.
-  // $settings['attributes'] += _nuamps_video_default_attributes();
-  // $attributes = isset($element['#value']['attributes']) ? $element['#value']['attributes'] : $settings['attributes'];
-  //
-  // 
  
   $settings['width'] = DEFAULT_WIDTH;
   $settngs['height'] = DEFAULT_HEIGHT;
@@ -682,30 +536,27 @@ function theme_nuamps_video_formatter_nuamps_video_default($vars) {
 
   drupal_add_js(base_path() . "sites/all/libraries/" . "jwplayer/jwplayer.js", 'file');
 
-  return _nuamps_video_markup(NULL, $vars['element']['url'], '', $vars['settings']['width'], $vars['settings']['height']);  
-}
+  //return _nuamps_video_markup(NULL, $vars['element']['url'], '', $vars['settings']['width'], $vars['settings']['height']);  
 
-function _nuamps_video_markup($title = NULL, $url = NULL, $classes = array(), $width = DEFAULT_WIDTH, $height = DEFAULT_HEIGHT) {
-  if(!isset($url)) { return ''; }
-
-  $output =  '<video id="container" src="'.$url.'" style="z-index: 11000" controls="visible"';
-
-  if(isset($title)) {
-    $output .= ' title="'.$title.'"';
-  }
-
-  $output .= '>Loading the player ...</video>';
-  $output .=   '<script>
-                  jwplayer("container").setup({
-                    file: "'.$url.'",
-                    height: '.$height.',
-                    width: '.$width.',
-                    modes: [
-                      { type: "flash", src: "'. base_path() . "sites/all/libraries/".'jwplayer/player.swf" },
-                      { type: "html5" }
-                    ]
-                  });
-                </script>';
+  //if(!isset($url)) { return ''; } // should be validated elsewhere
+  //if(isset($title)) { $output .= ' title="'.$title.'"'; }
+  
+  $vars['settings']['fallback'] = 'flash';
+  
+  $flash = '{ type: "flash", src: "'. base_path() . "sites/all/libraries/".'jwplayer/player.swf" }';
+  $html5 = '{ type: "html5", config: { file: "'.$vars['element']['url'].'"}}';
+  
+  $output =  '<video id="container" src="'.$vars['element']['url'].'" style="z-index: 11000" controls="visible">Loading the player ...</video>';
+  $output .= '<script>
+                jwplayer("container").setup({
+                  file: "'.$vars['element']['url'].'",
+                  height: '.$vars['settings']['height'].',
+                  width: '.$vars['settings']['width'].',
+                  modes: [';
+  $output .=        $vars['settings']['fallback'] == 'flash' ? $flash . "," . $html5: $flash . "," . $html5;
+  $output .=      ']
+                });
+              </script>';
 
   return $output;
 }
@@ -730,42 +581,6 @@ function nuamps_video_token_values($type, $object = NULL) {
 
     return $tokens;
   }
-}
-
-/**
- * Implements hook_views_api().
- */
-// function nuamps_video_views_api() {
-//   return array(
-//     'api' => 2,
-//     'path' => drupal_get_path('module', 'nuamps_video') .'/views',
-//   );
-// }
-
-/**
- * Forms a valid URL if possible from an entered address.
- * Trims whitespace and automatically adds an http:// to addresses without a protocol specified
- *
- * @param string $url
- * @param string $protocol The protocol to be prepended to the url if one is not specified
- */
-function nuamps_video_cleanup_url($url, $protocol = "http") {
-  $url = trim($url);
-  $type = nuamps_video_validate_url($url);
-
-  if ($type === LINK_EXTERNAL) {
-    // Check if there is no protocol specified.
-    $protocol_match = preg_match("/^([a-z0-9][a-z0-9\.\-_]*:\/\/)/i", $url);
-    if (empty($protocol_match)) {
-      // But should there be? Add an automatic http:// if it starts with a domain name.
-      $domain_match = preg_match('/^(([a-z0-9]([a-z0-9\-_]*\.)+)('. LINK_DOMAINS .'|[a-z]{2}))/i', $url);
-      if (!empty($domain_match)) {
-        $url = $protocol ."://". $url;
-      }
-    }
-  }
-
-  return $url;
 }
 
 /**
@@ -802,7 +617,7 @@ function nuamps_video_field_property_info_callback(&$info, $entity_type, $field,
   $property['setter callback'] = 'entity_metadata_field_verbatim_set';
 
   // Auto-create the field item as soon as a property is set.
- $property['auto creation'] = 'nuamps_video_field_item_create';
+  $property['auto creation'] = 'nuamps_video_field_item_create';
 
   $property['property info'] = nuamps_video_field_item_property_info();
   $property['property info']['url']['required'] = !$instance['settings']['url'];
@@ -822,7 +637,7 @@ function nuamps_video_field_property_info_callback(&$info, $entity_type, $field,
  * @see nuamps_video_field_property_info_callback()
  */
 function nuamps_video_field_item_create() {
-  return array('title' => NULL, 'url' => NULL, 'width' => NULL, 'height' => NULL);
+  return array('url' => NULL);
 }
 
 /**
@@ -846,3 +661,13 @@ function nuamps_video_field_item_property_info() {
   );
   return $properties;
 }
+
+/**
+ * Implements hook_views_api().
+ */
+// function nuamps_video_views_api() {
+//   return array(
+//     'api' => 2,
+//     'path' => drupal_get_path('module', 'nuamps_video') .'/views',
+//   );
+// }
