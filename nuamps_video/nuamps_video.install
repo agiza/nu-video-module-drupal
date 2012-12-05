@@ -27,6 +27,15 @@ function nuamps_video_field_schema($field) {
         'size' => 'medium',
         'not null' => FALSE
       ),
+      'fallback' => array(
+        'type' => 'varchar',
+        'length' => 5,
+        'not null' => FALSE
+      ),
     ),
   );
+}
+
+function nuamps_video_uninstall() {
+  //variable_del('upload_file_types');
 }

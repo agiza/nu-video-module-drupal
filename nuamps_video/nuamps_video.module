@@ -13,6 +13,11 @@
  * 
  * Comment!
  * 
+ * 
+ * INSTANCE SETTINGS nuamps_video_field_instance_settings_form
+ * ELEMENT: nuamps_video_field_process
+ * 
+ * 
  */
 
 //define('HOOK', 'nuamps_video');
@@ -20,6 +25,7 @@ define('DEFAULT_WIDTH', 640);
 define('DEFAULT_HEIGHT', 360);
 define('DEFAULT_CLASS', 'nuamps-video');
 define('VIDEO_URL_MAX_LENGTH', 2048); // must match value in nuamps_video.install
+define('DEFAULT_FALLBACK', 'flash');
 
 /**
  * Implements hook_field_info().
@@ -36,6 +42,7 @@ function nuamps_video_field_info() {
         'url' => '',
         'width' => DEFAULT_WIDTH,
         'height' => DEFAULT_HEIGHT,
+        'fallback' => DEFAULT_FALLBACK,
         'enable_tokens' => 1,
         'display' => array(),
       ),
@@ -72,7 +79,7 @@ function nuamps_video_field_settings_form($field, $instance, $has_data) {
  * Makes settings specific to content types
  */
 function nuamps_video_field_instance_settings_form($field, $instance) {
-  $settings = $instance['settings'];
+  $instance_settings = $instance['settings'];
   $form = array();
 
   $form['#element_validate'] = array('nuamps_video_field_settings_form_validate');
@@ -80,15 +87,23 @@ function nuamps_video_field_instance_settings_form($field, $instance) {
   $form['width'] = array(
     '#type' => 'textfield',
     '#title' => t('JWPlayer Width'),
-    '#default_value' => $settings['width'],
+    '#default_value' => $instance_settings['width'],
     '#description' => t('Enter a width for the video.'),
   );
 
   $form['height'] = array(
     '#type' => 'textfield',
     '#title' => t('JWPlayer Height'),
-    '#default_value' => $settings['height'],
+    '#default_value' => $instance_settings['height'],
     '#description' => t('Enter a height for the video.'),
+  );
+
+  $form['fallback'] = array(
+    '#type' => 'radios',
+    '#title' => t('Fallback'),
+    '#options' => array('flash' => t('Flash (Default = HTML5, Fallback = Flash)'), 'html' => t('HTML5 (Default = Flash, Fallback = HTML5)')),
+    '#default_value' => $instance_settings['fallback'],
+    //'#access' => $admin,
   );
 
   $form['display'] = array('#tree' => TRUE);
@@ -128,7 +143,6 @@ function nuamps_video_field_instance_settings_form($field, $instance) {
       '#default_value' => isset($instance['settings']['enable_tokens']) ? $instance['settings']['enable_tokens'] : 1,
       '#description' => t('Checking will allow users to enter tokens in URLs and Titles on the node edit form. This does not affect the field settings on this page.'),
     );
-
   }
   
   return $form;
@@ -464,26 +478,36 @@ function nuamps_video_field_process($element, $form_state, $complete_form) {
     '#required' => FALSE,
     '#default_value' => isset($element['#value']['url']) ? $element['#value']['url'] : NULL,
   );
-
-  $element['width'] = array(
-    '#type' => 'int',
-    '#maxlength' => 5,
-    '#title' => t('Width'),
-    '#description' => t('Enter width of jwplayer.'),
-    '#required' => TRUE,
-    '#default_value' => isset($element['#value']['width']) ? $element['#value']['width'] : DEFAULT_WIDTH,
-  );
-  $element['height'] = array(
-    '#type' => 'int',
-    '#maxlength' => 5,
-    '#title' => t('Width'),
-    '#description' => t('Enter height of jwplayer.'),
-    '#required' => TRUE,
-    '#default_value' => isset($element['#value']['height']) ? $element['#value']['height'] : DEFAULT_HEIGHT,
-  );
+  
+//  $element['width'] = array(
+//    '#type' => 'int',
+//    '#maxlength' => 5,
+//    '#title' => t('Width'),
+//    '#description' => t('Enter width of jwplayer.'),
+//    '#required' => TRUE,
+//    '#default_value' => isset($element['#value']['width']) ? $element['#value']['width'] : DEFAULT_WIDTH,
+//  );
+//  $element['height'] = array(
+//    '#type' => 'int',
+//    '#maxlength' => 5,
+//    '#title' => t('Width'),
+//    '#description' => t('Enter height of jwplayer.'),
+//    '#required' => TRUE,
+//    '#default_value' => isset($element['#value']['height']) ? $element['#value']['height'] : DEFAULT_HEIGHT,
+//  );
+//  $element['fallback'] = array(
+//    '#type' => 'radios',
+//    //'#maxlength' => 5,
+//    '#title' => t('Fallback'),
+//    '#description' => t('Enter fallback value.'),
+//    '#required' => TRUE,
+//    '#options' => array('flash' => t('Flash (Default = HTML5, Fallback = Flash)'), 'html' => t('HTML5 (Default = Flash, Fallback = HTML5)')),
+//    '#default_value' => isset($element['#value']['fallback']) ? $element['#value']['fallback'] : DEFAULT_FALLBACK,
+//  );
  
   $settings['width'] = DEFAULT_WIDTH;
-  $settngs['height'] = DEFAULT_HEIGHT;
+  $settings['height'] = DEFAULT_HEIGHT;
+  $settings['fallback'] = DEFAULT_FALLBACK;
   
   // To prevent an extra required indicator, disable the required flag on the
   // base element since all the sub-fields are already required if desired.
@@ -525,9 +549,10 @@ function nuamps_video_field_formatter_view($entity_type, $entity, $field, $insta
  */
 function theme_nuamps_video_formatter_nuamps_video_default($vars) {
   $nuamps_video_options = $vars['element'];
-  unset($nuamps_video_options['element']['url']);
-  unset($nuamps_video_options['element']['width']);
-  unset($nuamps_video_options['element']['height']);
+  //unset($nuamps_video_options['element']['url']);
+  //unset($nuamps_video_options['element']['width']);
+  //unset($nuamps_video_options['element']['height']);
+  //unset($nuamps_video_options['element']['fallback']);
 
   // Issue #1199806 by ss81: Fixes fatal error when the video URl is equal to page URL
   if (isset($nuamps_video_options['attributes']['class'])) {
@@ -541,10 +566,35 @@ function theme_nuamps_video_formatter_nuamps_video_default($vars) {
   //if(!isset($url)) { return ''; } // should be validated elsewhere
   //if(isset($title)) { $output .= ' title="'.$title.'"'; }
   
-  $vars['settings']['fallback'] = 'flash';
+  //$vars['settings']['fallback'] = 'flash';
+  
+  /*
+   * 
+   * 
+   * 
+        {type: 'flash', src: 'player.swf'},
+        {
+          type: 'html5',
+          config: {
+           'file': '/videos/sintel.mp4',
+           'provider': 'video'
+          }
+        },
+        {
+          type: 'download',
+          config: {
+           'file': '/videos/sintel.mp4',
+           'provider': 'video'
+          }
+        }
+
+   * 
+   * 
+   * 
+   */
   
   $flash = '{ type: "flash", src: "'. base_path() . "sites/all/libraries/".'jwplayer/player.swf" }';
-  $html5 = '{ type: "html5", config: { file: "'.$vars['element']['url'].'"}}';
+  $html = '{ type: "html5", config: { file: "'.$vars['element']['url'].'"}}';
   
   $output =  '<video id="container" src="'.$vars['element']['url'].'" style="z-index: 11000" controls="visible">Loading the player ...</video>';
   $output .= '<script>
@@ -553,8 +603,9 @@ function theme_nuamps_video_formatter_nuamps_video_default($vars) {
                   height: '.$vars['settings']['height'].',
                   width: '.$vars['settings']['width'].',
                   modes: [';
-  $output .=        $vars['settings']['fallback'] == 'flash' ? $flash . "," . $html5: $flash . "," . $html5;
-  $output .=      ']
+   //$output .= $vars['settings']['fallback'] == 'flash' ? $html . "," . $flash : $flash . "," . $html;
+   $output .= $vars['settings']['fallback'] == 'flash' ? $html : $flash;
+   $output .=      ']
                 });
               </script>';
 
@@ -665,9 +716,19 @@ function nuamps_video_field_item_property_info() {
 /**
  * Implements hook_views_api().
  */
-// function nuamps_video_views_api() {
-//   return array(
-//     'api' => 2,
-//     'path' => drupal_get_path('module', 'nuamps_video') .'/views',
-//   );
-// }
+function nuamps_video_views_api() {
+  return array(
+    'api' => 2,
+    'path' => drupal_get_path('module', 'nuamps_video') .'/views',
+  );
+}
+
+/**
+ * Implements hook_from_alter().
+ */
+
+function nuamps_video_form_alter(&$form, &$form_state, $form_id) {
+  if (isset($form)) {
+      print($form);
+  }
+}
