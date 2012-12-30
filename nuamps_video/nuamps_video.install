@@ -27,9 +27,39 @@ function nuamps_video_field_schema($field) {
         'size' => 'medium',
         'not null' => FALSE
       ),
+      'class' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => FALSE
+      ),
+      'image' => array(
+        'type' => 'varchar',
+        'length' => 2048,
+        'not null' => FALSE
+      ),
       'fallback' => array(
         'type' => 'varchar',
         'length' => 5,
+        'not null' => FALSE
+      ),
+      'override' => array(
+        'type' => 'varchar',
+        'length' => 5,
+        'not null' => FALSE
+      ),
+      'autostart' => array(
+        'type' => 'varchar',
+        'length' => 5,
+        'not null' => FALSE
+      ),
+      'showmute' => array(
+        'type' => 'varchar',
+        'length' => 5,
+        'not null' => FALSE
+      ),
+      'controlbar_position' => array(
+        'type' => 'varchar',
+        'length' => 6,
         'not null' => FALSE
       ),
     ),
@@ -38,4 +68,10 @@ function nuamps_video_field_schema($field) {
 
 function nuamps_video_uninstall() {
   //variable_del('upload_file_types');
+  
+  // table -> row
+  // field_config_instance -> field_video_url
+  // field_data_field_video_url -> all
+  // field_revision_field_video_url -> all
+  
 }

@@ -3,29 +3,48 @@
 
 /*
  * TODO
- * 
- * Create checbox to allow user to override width and height for 
+ *
+ * Create checbox to allow user to override width and height for
  * specific content.
- * 
+ *
  * Create radio button for user to select default/fallback format.
- * 
- * Split Code into fields, entity, and views inc files.
- * 
+ *
  * Comment!
- * 
- * 
+ *
+ *
  * INSTANCE SETTINGS nuamps_video_field_instance_settings_form
  * ELEMENT: nuamps_video_field_process
- * 
- * 
+ *
+ *
  */
 
 //define('HOOK', 'nuamps_video');
+define('VIDEO_URL_MAX_LENGTH', 2048); // must match value in nuamps_video.install
 define('DEFAULT_WIDTH', 640);
 define('DEFAULT_HEIGHT', 360);
 define('DEFAULT_CLASS', 'nuamps-video');
-define('VIDEO_URL_MAX_LENGTH', 2048); // must match value in nuamps_video.install
-define('DEFAULT_FALLBACK', 'flash');
+define('DEFAULT_FALLBACK', 'flash'); // flash, html
+define('DEFAULT_OVERRIDE', 'false'); // false, true
+define('DEFAULT_AUTOSTART', 'false'); // false, true
+define('DEFAULT_DISPLAY_SHOWMUTE', 'false'); // false, true
+define('DEFAULT_CONTROLBAR_POSITION', 'bottom'); // bottom, top, over, none
+
+/**
+ * Implements hook_help().
+ *
+ * Adds help information for the nuamps_video module.
+ */
+function nuamps_video_help($path, $arg) {
+    switch ($path) {
+        case 'admin/help#nuamps_video': {
+            $ret_val  = '<h3>' . t('About') . '</h3>';
+            $ret_val .= '<p>' . t('The nuamps_video module allows a user to 
+              input the URL of an RTMP video stream and embed the video within 
+              the Content using JWplayer') . '</p>';
+            return $ret_val;
+        }
+    }
+}
 
 /**
  * Implements hook_field_info().
@@ -36,42 +55,26 @@ function nuamps_video_field_info() {
   return array(
     'nuamps_video_field' => array(
       'label' => t('NUAMPS Video'),
-      'description' => t('Store a width, height, and URL in the database to assemble a video.'),
+      'description' => t('Store a width, height, and URL in the database to 
+        assemble a video.'),
       'settings' => array('max_length' => 2048),
-      'instance_settings' => array(
-        'url' => '',
-        'width' => DEFAULT_WIDTH,
-        'height' => DEFAULT_HEIGHT,
-        'fallback' => DEFAULT_FALLBACK,
-        'enable_tokens' => 1,
-        'display' => array(),
-      ),
       'default_widget' => 'nuamps_video_field',
       'default_formatter' => 'nuamps_video_default',
-      // Support hook_entity_property_info() from contrib "Entity API".
-      'property_type' => 'field_item_nuamps_video',
-      'property_callbacks' => array('nuamps_video_field_property_info_callback'),
+      'instance_settings' => array(
+        'width' => DEFAULT_WIDTH,
+        'height' => DEFAULT_HEIGHT,
+        'image' => '',
+        'class' => DEFAULT_CLASS,
+        'fallback' => DEFAULT_FALLBACK,
+        'override' => DEFAULT_OVERRIDE,
+        'autostart' => DEFAULT_AUTOSTART,
+        'showmute' => DEFAULT_DISPLAY_SHOWMUTE,
+        'controlbar_position' => DEFAULT_CONTROLBAR_POSITION,
+        //'enable_tokens' => 0,
+      ),
     ),
   );
 }
-
-/**
- * Implements hook_field_settings_form().
- *
- * Makes global settings for field
- */
-function nuamps_video_field_settings_form($field, $instance, $has_data) {
-  $settings = $field['settings'];
-  $form['url'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Maxium length'),
-    '#default_value' => $settings['max_length'],
-    '#required' => TRUE,
-    '#description' => t('The maximum length of the field in characters.'),
-  );
-  return $form;
-}
-
 
 /**
  * Implements hook_field_instance_settings_form().
@@ -98,53 +101,73 @@ function nuamps_video_field_instance_settings_form($field, $instance) {
     '#description' => t('Enter a height for the video.'),
   );
 
+  $form['image'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Default Image'),
+    '#default_value' => $instance_settings['image'],
+    '#description' => t('Image URL.'),
+  );
+
+  $form['class'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Additional CSS Class'),
+    '#default_value' => $instance_settings['class'],
+    '#description' => t('When output, this video will have this class attribute. 
+      Multiple classes should be separated by spaces.'),
+  );
+
   $form['fallback'] = array(
     '#type' => 'radios',
     '#title' => t('Fallback'),
-    '#options' => array('flash' => t('Flash (Default = HTML5, Fallback = Flash)'), 'html' => t('HTML5 (Default = Flash, Fallback = HTML5)')),
+    '#options' => array(
+      'flash' => t('Flash (Default = HTML5, Fallback = Flash)'), 
+      'html' => t('HTML5 (Default = Flash, Fallback = HTML5)')
+      ),
     '#default_value' => $instance_settings['fallback'],
-    //'#access' => $admin,
   );
 
-  $form['display'] = array('#tree' => TRUE);
-  $form['attributes'] = array('#tree' => TRUE);
-
-  $form['attributes']['class'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Additional CSS Class'),
-    '#default_value' => DEFAULT_CLASS,
-    '#description' => t('When output, this video will have this class attribute. Multiple classes should be separated by spaces.'),      
+  $form['override'] = array(
+    '#type' => 'radios',
+    '#title' => t('Override'),
+    '#options' => array(
+      'true' => t('Allow override'), 
+      'false' => t('Do not allow override')
+      ),
+    '#default_value' => $instance_settings['override'],
   );
-  
-  if (module_exists('token')) {
-    // Add token module replacements fields
-    $form['tokens'] = array(
-      '#type' => 'fieldset',
-      '#collapsible' => TRUE,
-      '#collapsed' => TRUE,
-      '#title' => t('Placeholder tokens'),
-      '#description' => t("The following placeholder tokens can be used in both paths and titles. When used in a path or title, they will be replaced with the appropriate values."),
-    );
-    $token_type = array(
-      'theme' => 'token_tree',
-      'token_types' => array($instance['entity_type']),
-      'global_types' => TRUE,
-      'click_insert' => TRUE,
-      'recursion_limit' => 2,
-    );
-    $form['tokens']['help'] = array(
-      '#type' => 'markup',
-      '#markup' => theme('token_tree', $token_type),
-    );
 
-    $form['enable_tokens'] = array(
-      '#type' => 'checkbox',
-      '#title' => t('Allow user-entered tokens'),
-      '#default_value' => isset($instance['settings']['enable_tokens']) ? $instance['settings']['enable_tokens'] : 1,
-      '#description' => t('Checking will allow users to enter tokens in URLs and Titles on the node edit form. This does not affect the field settings on this page.'),
-    );
-  }
-  
+  $form['autostart'] = array(
+    '#type' => 'radios',
+    '#title' => t('Autostart'),
+    '#options' => array(
+      'true' => t('Allow autostart'), 
+      'false' => t('Do not allow autostart')
+      ),
+    '#default_value' => $instance_settings['autostart'],
+  );
+
+  $form['showmute'] = array(
+    '#type' => 'radios',
+    '#title' => t('Show Mute'),
+    '#options' => array(
+      'true' => t('Allow showmute'), 
+      'false' => t('Do not allow showmute')
+      ),
+    '#default_value' => $instance_settings['showmute'],
+  );
+
+  $form['controlbar_position'] = array(
+    '#type' => 'radios',
+    '#title' => t('Controlbar Position'),
+    '#options' => array(
+      'bottom' => t('bottom'), 
+      'top' => t('top'), 
+      'over' => t('over'), 
+      'none' => t('none')
+      ),
+    '#default_value' => $instance_settings['controlbar_position'],
+  );
+
   return $form;
 }
 
@@ -154,59 +177,22 @@ function nuamps_video_field_instance_settings_form($field, $instance) {
  * Validate field values and error if user adds wrong values
  */
 function nuamps_video_field_validate($entity_type, $entity, $field, $instance, $langcode, $items, &$errors) {
-  //$optional_field_found = FALSE;
+  $optional_field_found = FALSE;
 
-  //foreach ($items as $delta => $value) {
-    //($items[$delta], $delta, $field, $entity, $instance, $optional_field_found);
-    // check if WIDTH AND FIELD ARE NOT ZERO
-    //    form_set_error($field['field_name'] .']['. $delta .'][url', t('Not a valid URL.')); 
-    //    form_set_error($instance['field_name'] .'][0][title', t('At least one title or URL must be entered.'));
+  foreach ($items as $delta => $value) {
+//    ($items[$delta], $delta, $field, $entity, $instance, $optional_field_found);
+//     check if WIDTH AND FIELD ARE NOT ZERO
+        //form_set_error($field['field_name'] .']['. $delta .'][url', t('Not a valid URL.'));
+        //form_set_error($instance['field_name'] .'][0][title', t('At least one title or URL must be entered.'));
 
-  //}
+  }
 
-  if (!isset($instance['settings']['width'])) { form_set_error($field['field_name'] .'][0][width', t('The width must be set.')); }
-  if (!isset($instance['settings']['height'])) { form_set_error($field['field_name'] .'][0][height', t('The height must be set.')); }
-  if (!is_numeric($instance['settings']['width'])) { form_set_error($field['field_name'] .'][0][width', t('The width must be numeric.')); }
-  if (!is_numeric($instance['settings']['height'])) { form_set_error($field['field_name'] .'][0][height', t('The height must be numeric.')); }
-  if ($instance['settings']['width'] < 0) { form_set_error($field['field_name'] .'][0][width', t('The width must be greater than 0 .')); }
-  if ($instance['settings']['height'] < 0) { form_set_error($field['field_name'] .'][0][height', t('The height must be greater than 0 .')); }
-}
-
-/**
- * Validates that the video field has been entered properly.
- */
-function nuamps_video_validate_url($text) {
-
-  // TODO: CHANGE THIS FUNCTION SO IT ACTUALLY MAKES SENSE....
-    
-  return TRUE;  
-
-}
-
-/**
- * Forms a valid URL if possible from an entered address.
- * Trims whitespace and automatically adds an http:// to addresses without a protocol specified
- *
- * @param string $url
- * @param string $protocol The protocol to be prepended to the url if one is not specified
- */
-function nuamps_video_cleanup_url($url, $protocol = "http") {
-  $url = trim($url);
-  $type = nuamps_video_validate_url($url);
-
-//  if ($type === LINK_EXTERNAL) {
-//    // Check if there is no protocol specified.
-//    $protocol_match = preg_match("/^([a-z0-9][a-z0-9\.\-_]*:\/\/)/i", $url);
-//    if (empty($protocol_match)) {
-//      // But should there be? Add an automatic http:// if it starts with a domain name.
-//      $domain_match = preg_match('/^(([a-z0-9]([a-z0-9\-_]*\.)+)('. LINK_DOMAINS .'|[a-z]{2}))/i', $url);
-//      if (!empty($domain_match)) {
-//        $url = $protocol ."://". $url;
-//      }
-//    }
-//  }
-
-  return $url;
+    if (!isset($instance['settings']['width'])) { form_set_error($field['field_name'] .'][0][width', t('The width must be set.')); }
+    if (!isset($instance['settings']['height'])) { form_set_error($field['field_name'] .'][0][height', t('The height must be set.')); }
+    if (!is_numeric($instance['settings']['width'])) { form_set_error($field['field_name'] .'][0][width', t('The width must be numeric.')); }
+    if (!is_numeric($instance['settings']['height'])) { form_set_error($field['field_name'] .'][0][height', t('The height must be numeric.')); }
+    if ($instance['settings']['width'] < 0) { form_set_error($field['field_name'] .'][0][width', t('The width must be greater than 0 .')); }
+    if ($instance['settings']['height'] < 0) { form_set_error($field['field_name'] .'][0][height', t('The height must be greater than 0 .')); }
 }
 
 /**
@@ -220,15 +206,20 @@ function nuamps_video_field_settings_form_validate($element, &$form_state, $comp
 
   if (!isset($form_state['values']['instance']['settings']['width'])) {
     form_set_error('width', t('The width must be set.'));
-  } elseif (!isset($form_state['values']['instance']['settings']['height'])) {
+  }
+  elseif (!isset($form_state['values']['instance']['settings']['height'])) {
     form_set_error('height', t('The height must be set.'));
-  } elseif (!is_numeric($form_state['values']['instance']['settings']['width'])) {
+  }
+  elseif (!is_numeric($form_state['values']['instance']['settings']['width'])) {
     form_set_error('width', t('The width must be numeric.'));
-  } elseif (!is_numeric($form_state['values']['instance']['settings']['height'])) {
+  }
+  elseif (!is_numeric($form_state['values']['instance']['settings']['height'])) {
     form_set_error('height', t('The height must be numeric.'));
-  } elseif ($form_state['values']['instance']['settings']['width'] < 0) {
+  }
+  elseif ($form_state['values']['instance']['settings']['width'] < 0) {
     form_set_error('width', t('The width must be greater than 0 .'));
-  } elseif ($form_state['values']['instance']['settings']['height'] < 0) {
+  }
+  elseif ($form_state['values']['instance']['settings']['height'] < 0) {
     form_set_error('height', t('The height must be greater than 0 .'));
   }
 
@@ -242,44 +233,14 @@ function nuamps_video_field_is_empty($item, $field) {
 }
 
 /**
- * Implements hook_field_load().
- */
-function nuamps_video_field_load($entity_type, $entities, $field, $instances, $langcode, &$items, $age) {
-   foreach ($entities as $id => $entity) {
-     foreach ($items[$id] as $delta => $item) {
-       $items[$id][$delta]['attributes'] = _nuamps_video_load($field, $item, $instances[$id]);
-     }
-   }
-}
-
-/**
  * Implements hook_field_presave().
  */
 function nuamps_video_field_presave($entity_type, $entity, $field, $instance, $langcode, &$items) {
-  foreach ($items as $delta => $value) {
-
-    $item = $items[$delta];
-
+//  foreach ($items as $delta => $value) {
+//    $item = $items[$delta];
     // Trim whitespace from URL.
-    $item['url'] = trim($item['url']);
-
-    // Don't save an invalid default value (e.g. 'http://').
-    if ((isset($field['widget']['default_value'][$delta]['url']) && $item['url'] == $field['widget']['default_value'][$delta]['url']) && is_object($node)) {
-      if (!nuamps_video_validate_url($item['url'])) { unset($item['url']); }
-    }
-  
-  }
-}
-
-/**
- * Implements hook_field_prepare_view().
- */
-function nuamps_video_field_prepare_view($entity_type, $entities, $field, $instances, $langcode, &$items) {
-  foreach ($items as $entity_id => $entity_items) {
-    foreach ($entity_items as $delta => $value) {
-      _nuamps_video_sanitize($items[$entity_id][$delta], $delta, $field, $instances[$entity_id], $entities[$entity_id]);
-    }
-  }
+    //$item['url'] = trim($item['url']);
+//  }
 }
 
 /**
@@ -297,7 +258,7 @@ function nuamps_video_field_widget_info() {
 
 /**
  * Implements hook_field_widget_form().
- * 
+ *
  * Shows the form when you edit/create new content with the nuamps video field.
  */
 function nuamps_video_field_widget_form(&$form, &$form_state, $field, $instance, $langcode, $items, $delta, $element) {
@@ -309,105 +270,9 @@ function nuamps_video_field_widget_form(&$form, &$form_state, $field, $instance,
 }
 
 /**
- * Unpacks the item attributes for use.
- */
-function _nuamps_video_load($field, $item, $instance) {
-
-}
-
-/**
- * Cleanup user-entered values for a video field according to field settings.
- *
- * @param $item
- *   A single video item, usually containing url, title, and attributes.
- * @param $delta
- *   The delta value if this field is one of multiple fields.
- * @param $field
- *   The CCK field definition.
- * @param $node
- *   The node containing this video.
- */
-function _nuamps_video_sanitize(&$item, $delta, &$field, $instance, &$node) {
-  // Don't try to process empty video.
-  if (empty($item['url'])) return;
-
-  // Replace URL tokens.
-  if (isset($instance['settings']['enable_tokens']) && $instance['settings']['enable_tokens']) {
-    global $user;
-    // Load the node if necessary for nodes in views.
-    $token_node = isset($node->nid) ? node_load($node->nid) : $node;
-    $item['url'] = token_replace($item['url'], array('node' => $token_node));
-  }
-
-  $type = nuamps_video_validate_url($item['url']);
-  $url = nuamps_video_cleanup_url($item['url']);
-
-  // Separate out the anchor if any.
-  if (strpos($url, '#') !== FALSE) {
-    $item['fragment'] = substr($url, strpos($url, '#') + 1);
-    $url = substr($url, 0, strpos($url, '#'));
-  }
-  // Separate out the query string if any.
-  if (strpos($url, '?') !== FALSE) {
-    $query = substr($url, strpos($url, '?') + 1);
-    parse_str($query, $query_array);
-    $item['query'] = $query_array;
-    $url = substr($url, 0, strpos($url, '?'));
-  }
-
-  $item['url'] = check_plain($url);
-
-  // Create a shortened URL for display.
-  $display_url = url($url, array('query' => isset($item['query']) ? $item['query'] : NULL,
-                                 'fragment' => isset($item['fragment']) ? $item['fragment'] : NULL,
-                                 'absolute' => TRUE));
-  $item['display_url'] = $display_url;
-  
-
-  // Replace tokens.
-  // if ($title && ($instance['settings']['title'] == 'value' || $instance['settings']['enable_tokens'])) {
-    // Load the node if necessary for nodes in views.
-  //  $token_node = isset($node->nid) ? node_load($node->nid) : $node;
-  //  $title = filter_xss(token_replace($title, array('node' => $token_node)),
-  //                      array('b', 'br', 'code', 'em', 'i', 'img', 'span', 'strong', 'sub', 'sup', 'tt', 'u'));
-  //  $item['html'] = TRUE;
-  // }
-
-  // if (!isset($item['attributes'])) {
-  //   $item['attributes'] = array();
-  // }
-
-  // Unserialize attributtes array if it has not been unserialized yet.
-  // if (!is_array($item['attributes'])) {
-  //   $item['attributes'] = (array)unserialize($item['attributes']);
-  // }
-
-  // Add default attributes.
-  // if (!is_array($instance['settings']['attributes'])){
-  //   $instance['settings']['attributes'] = _nuamps_video_default_attributes();
-  // }
-  // else {
-  //   $instance['settings']['attributes'] += _nuamps_video_default_attributes();
-  // }
-
-  // Merge item attributes with attributes defined at the field level.
-  //$item['attributes'] += $instance['settings']['attributes'];
-
-  // Remove the rel=nofollow for internal links.
-  // if ($type != LINK_EXTERNAL && strpos($item['attributes']['rel'], 'nofollow') !== FALSE) {
-  //   $item['attributes']['rel'] = str_replace('nofollow', '', $item['attributes']);
-  // }
-
-  // unset($item['attributes']['configurable_title']);
-
-  // Remove empty attributes.
-  // $item['attributes'] = array_filter($item['attributes']);
-}
-
-/**
  * Implements hook_theme().
  */
-function nuamps_video_theme() {
+function nuamps_video_theme($existing, $type, $theme, $path) {
   return array(
     'nuamps_video_formatter_nuamps_video_default' => array(
       'variables' => array('element' => NULL),
@@ -423,23 +288,18 @@ function nuamps_video_theme() {
  */
 function theme_nuamps_video_field($vars) {
   $element = $vars['element'];
-  // Prefix single value video fields with the name of the field.
-  if (empty($element['#field']['multiple'])) {
-    if (isset($element['url']) && !isset($element['title'])) {
-      unset($element['url']['#title']);
-    }
-  }
-
-  $output = '';
+  $output  = '';
   $output .= '<div class="nuamps-video-field-subrow clearfix">';
-  if (isset($element['title'])) {
-    $output .= '<div class="nuamps-video-field-title nuamps-video-field-column">'. drupal_render($element['title']) .'</div>';
-  }
-  $output .= '<div class="nuamps-video-field-url'. (isset($element['title']) ? ' nuamps-video-field-column' : '') .'">'. drupal_render($element['url']) .'</div>';
+  $output .= '<div class="nuamps-video-field-url">' . drupal_render($element['url']) . '</div>';
+  if (isset($element['width'])) $output .= '<div class="nuamps-video-field-width">' . drupal_render($element['width']) . '</div>';
+  if (isset($element['height'])) $output .= '<div class="nuamps-video-field-height">' . drupal_render($element['height']) . '</div>';
+  if (isset($element['image'])) $output .= '<div class="nuamps-video-field-image">' . drupal_render($element['image']) . '</div>';
+  if (isset($element['class'])) $output .= '<div class="nuamps-video-field-class">' . drupal_render($element['class']) . '</div>';
+  if (isset($element['fallback'])) $output .= '<div class="nuamps-video-field-fallback">' . drupal_render($element['fallback']) . '</div>';
+  if (isset($element['autostart'])) $output .= '<div class="nuamps-video-field-autostart">' . drupal_render($element['autostart']) . '</div>';
+  if (isset($element['showmute'])) $output .= '<div class="nuamps-video-field-showmute">' . drupal_render($element['showmute']) . '</div>';
+  if (isset($element['controlbar_position'])) $output .= '<div class="nuamps-video-field-controlbar_position">' . drupal_render($element['controlbar_position']) . '</div>';
   $output .= '</div>';
-  if (!empty($element['attributes']['title'])) {
-    $output .= '<div class="nuamps-video-attributes">'. drupal_render($element['attributes']['title']) .'</div>';
-  }
   return $output;
 }
 
@@ -458,6 +318,7 @@ function nuamps_video_element_info() {
 }
 
 
+
 /**
  * Process the video type element before displaying the field.
  *
@@ -467,57 +328,88 @@ function nuamps_video_element_info() {
  * The $fields array is in $complete_form['#field_info'][$element['#field_name']].
  */
 function nuamps_video_field_process($element, $form_state, $complete_form) {
+
   $instance = field_widget_instance($element, $form_state);
-  $settings = $instance['settings'];
+  $instance_settings = $instance['settings'];
 
   $element['url'] = array(
     '#type' => 'textfield',
     '#maxlength' => VIDEO_URL_MAX_LENGTH,
     '#title' => t('URL'),
     '#description' => t('Enter URL for jwplayer.'),
-    '#required' => FALSE,
+    '#required' => TRUE,
     '#default_value' => isset($element['#value']['url']) ? $element['#value']['url'] : NULL,
   );
-  
-//  $element['width'] = array(
-//    '#type' => 'int',
-//    '#maxlength' => 5,
-//    '#title' => t('Width'),
-//    '#description' => t('Enter width of jwplayer.'),
-//    '#required' => TRUE,
-//    '#default_value' => isset($element['#value']['width']) ? $element['#value']['width'] : DEFAULT_WIDTH,
-//  );
-//  $element['height'] = array(
-//    '#type' => 'int',
-//    '#maxlength' => 5,
-//    '#title' => t('Width'),
-//    '#description' => t('Enter height of jwplayer.'),
-//    '#required' => TRUE,
-//    '#default_value' => isset($element['#value']['height']) ? $element['#value']['height'] : DEFAULT_HEIGHT,
-//  );
-//  $element['fallback'] = array(
-//    '#type' => 'radios',
-//    //'#maxlength' => 5,
-//    '#title' => t('Fallback'),
-//    '#description' => t('Enter fallback value.'),
-//    '#required' => TRUE,
-//    '#options' => array('flash' => t('Flash (Default = HTML5, Fallback = Flash)'), 'html' => t('HTML5 (Default = Flash, Fallback = HTML5)')),
-//    '#default_value' => isset($element['#value']['fallback']) ? $element['#value']['fallback'] : DEFAULT_FALLBACK,
-//  );
- 
-  $settings['width'] = DEFAULT_WIDTH;
-  $settings['height'] = DEFAULT_HEIGHT;
-  $settings['fallback'] = DEFAULT_FALLBACK;
-  
+
+  if ($instance_settings['override'] == "true") {
+    
+    $element['width'] = array(
+      '#type' => 'textfield',
+      '#title' => t('JWPlayer Width'),
+      '#default_value' => isset($element['#value']['width']) ? $element['#value']['width'] : $instance_settings['width'],
+      '#description' => t('Enter a width for the video.'),
+    );
+
+    $element['height'] = array(
+      '#type' => 'textfield',
+      '#title' => t('JWPlayer Height'),
+      '#default_value' => isset($element['#value']['height']) ? $element['#value']['height'] : $instance_settings['height'],
+      '#description' => t('Enter a height for the video.'),
+    );
+
+    $element['image'] = array(
+      '#type' => 'textfield',
+      '#title' => t('Default Image'),
+      '#default_value' => isset($element['#value']['image']) ? $element['#value']['image'] : $instance_settings['image'],
+      '#description' => t('Image URL.'),
+    );
+
+    $element['class'] = array(
+      '#type' => 'textfield',
+      '#title' => t('Additional CSS Class'),
+      '#default_value' => isset($element['#value']['class']) ? $element['#value']['class'] : $instance_settings['class'],
+      '#description' => t('When output, this video will have this class attribute. Multiple classes should be separated by spaces.'),
+    );
+
+    $element['fallback'] = array(
+      '#type' => 'radios',
+      '#title' => t('Fallback'),
+      '#options' => array('flash' => t('Flash (Default = HTML5, Fallback = Flash)'), 'html' => t('HTML5 (Default = Flash, Fallback = HTML5)')),
+      '#default_value' => isset($element['#value']['fallback']) ? $element['#value']['fallback'] : $instance_settings['fallback'],
+    );
+
+    $element['autostart'] = array(
+      '#type' => 'radios',
+      '#title' => t('Autostart'),
+      '#options' => array('true' => t('Allow autostart'), 'false' => t('Do not allow autostart')),
+      '#default_value' => isset($element['#value']['autostart']) ? $element['#value']['autostart'] : $instance_settings['autostart'],
+    );
+
+    $element['showmute'] = array(
+      '#type' => 'radios',
+      '#title' => t('Showmute'),
+      '#options' => array('true' => t('Allow showmute'), 'false' => t('Do not allow showmute')),
+      '#default_value' => isset($element['#value']['showmute']) ? $element['#value']['showmute'] : $instance_settings['showmute'],
+    );
+
+    $element['controlbar_position'] = array(
+      '#type' => 'radios',
+      '#title' => t('Controlbar Position'),
+      '#options' => array('bottom' => t('bottom'), 'top' => t('top'), 'over' => t('over'), 'none' => t('none')),
+      '#default_value' => isset($element['#value']['controlbar_position']) ? $element['#value']['controlbar_position'] : $instance_settings['controlbar_position'],
+    );
+
+  }
+
   // To prevent an extra required indicator, disable the required flag on the
   // base element since all the sub-fields are already required if desired.
-  $element['#required'] = FALSE; // davereids patch from jan 2011
+  $element['#required'] = FALSE;
 
   return $element;
 }
 
 /**
- * Implementation of hook_field_formatter_info().
+ * Implements hook_field_formatter_info().
  */
 function nuamps_video_field_formatter_info() {
   return array(
@@ -534,11 +426,10 @@ function nuamps_video_field_formatter_info() {
  */
 function nuamps_video_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display) {
   $elements = array();
-  $settings = $instance['settings'];
-  
+
   foreach ($items as $delta => $item) {
     $elements[$delta] = array(
-      '#markup' => theme('nuamps_video_formatter_'. $display['type'], array('element' => $item, 'field' => $instance, 'settings' => $settings)),
+      '#markup' => theme('nuamps_video_formatter_' . $display['type'], array('element' => $item, 'field' => $instance)),
     );
   }
   return $elements;
@@ -548,187 +439,84 @@ function nuamps_video_field_formatter_view($entity_type, $entity, $field, $insta
  * Theme function for 'default' text field formatter.
  */
 function theme_nuamps_video_formatter_nuamps_video_default($vars) {
-  $nuamps_video_options = $vars['element'];
-  //unset($nuamps_video_options['element']['url']);
-  //unset($nuamps_video_options['element']['width']);
-  //unset($nuamps_video_options['element']['height']);
-  //unset($nuamps_video_options['element']['fallback']);
-
-  // Issue #1199806 by ss81: Fixes fatal error when the video URl is equal to page URL
-  if (isset($nuamps_video_options['attributes']['class'])) {
-    $nuamps_video_options['attributes']['class'] = array($nuamps_video_options['attributes']['class']);
-  }
+  static $containerID = 0;
+  $containerID++;
+  
+  $field_settings = $vars['field']['settings'];
+  $override_settings = $vars['element'];
+  
+  // If override is set but no values are entered, use field settings.
+  $settings = $field_settings['override'] == 'true' && count(array_filter($override_settings)) > 1 ?  $override_settings : $field_settings;
 
   drupal_add_js(base_path() . "sites/all/libraries/" . "jwplayer/jwplayer.js", 'file');
 
-  //return _nuamps_video_markup(NULL, $vars['element']['url'], '', $vars['settings']['width'], $vars['settings']['height']);  
+  $flash = '{ type: "flash", src: "' . base_path() . "sites/all/libraries/" . 'jwplayer/player.swf" }';
+  $html  = '{ type: "html5", config: { provider: "video", file: "' . $vars['element']['url'] . '"}}';
 
-  //if(!isset($url)) { return ''; } // should be validated elsewhere
-  //if(isset($title)) { $output .= ' title="'.$title.'"'; }
-  
-  //$vars['settings']['fallback'] = 'flash';
-  
-  /*
-   * 
-   * 
-   * 
-        {type: 'flash', src: 'player.swf'},
-        {
-          type: 'html5',
-          config: {
-           'file': '/videos/sintel.mp4',
-           'provider': 'video'
-          }
-        },
-        {
-          type: 'download',
-          config: {
-           'file': '/videos/sintel.mp4',
-           'provider': 'video'
-          }
-        }
-
-   * 
-   * 
-   * 
-   */
-  
-  $flash = '{ type: "flash", src: "'. base_path() . "sites/all/libraries/".'jwplayer/player.swf" }';
-  $html = '{ type: "html5", config: { file: "'.$vars['element']['url'].'"}}';
-  
-  $output =  '<video id="container" src="'.$vars['element']['url'].'" style="z-index: 11000" controls="visible">Loading the player ...</video>';
+  $output  = '<video id="container' . $containerID . '" src="' . $vars['element']['url'] . '" style="z-index: 11000" controls="visible">Loading the player ...</video>';
   $output .= '<script>
-                jwplayer("container").setup({
-                  file: "'.$vars['element']['url'].'",
-                  height: '.$vars['settings']['height'].',
-                  width: '.$vars['settings']['width'].',
-                  modes: [';
-   //$output .= $vars['settings']['fallback'] == 'flash' ? $html . "," . $flash : $flash . "," . $html;
-   $output .= $vars['settings']['fallback'] == 'flash' ? $html : $flash;
-   $output .=      ']
+                jwplayer("container' . $containerID . '").setup({
+                  \'file\': "'  .  $vars['element']['url'] . '",
+                  \'height\': "' .  $settings['height'] . '",
+                  \'width\': "'  .  $settings['width'] . '",
+                  \'image\': "'  .  $settings['image'] . '",
+                  \'controlbar.position\': "' . $settings['controlbar_position'] . '",
+                  \'display.showmute\': "' . $settings['showmute'] . '",
+                  \'autostart\': "' . $settings['autostart'] . '",
+                  \'modes\': [';
+  $output .= $settings['fallback'] == 'flash' ? $html . ",\n" . $flash : $flash . ",\n" . $html;
+  $output .=      ']
                 });
               </script>';
 
   return $output;
 }
 
-function nuamps_video_token_list($type = 'all') {
-  if ($type === 'field' || $type === 'all') {
-    $tokens = array();
-
-    $tokens['nuamps_video']['url'] = t("Video URL");
-    $tokens['nuamps_video']['view'] = t("Formatted video");
-
-    return $tokens;
+function nuamps_video_form_alter(&$form, &$form_state, $form_id) {
+  if (isset($form)) {
+      if ($form['#id'] == 'field-ui-field-edit-form'
+          && $form['#field']['module'] == 'nuamps_video') {
+        unset($form['instance']['default_value_widget']);
+        unset($form['instance']['description']);
+      }
   }
 }
 
-function nuamps_video_token_values($type, $object = NULL) {
-  if ($type === 'field') {
-    $item = $object[0];
-
-    $tokens['url'] = $item['url'];
-    $tokens['view'] = isset($item['view']) ? $item['view'] : '';
-
-    return $tokens;
-  }
-}
-
-/**
- * Implements hook_migrate_field_alter().
- */
-function nuamps_video_content_migrate_field_alter(&$field_value, $instance_value) {
-  if ($field_value['type'] == 'nuamps_video') {
-    // need to change the type:
-    $field_value['type'] = 'nuamps_video_field';
-  }
-}
-
-/**
- * Implements hook_migrate_instance_alter().
- *
- * Widget type also changed to nuamps_video_field.
- */
-function nuamps_video_content_migrate_instance_alter(&$instance_value, $field_value) {
-  if ($instance_value['widget']['module'] == 'nuamps_video'
-      && $instance_value['widget']['type'] == 'nuamps_video') {
-    $instance_value['widget']['type'] = 'nuamps_video_field';
-  }
-}
-
-/**
- * Additional callback to adapt the property info of video fields.
- * @see entity_metadata_field_entity_property_info().
- */
-function nuamps_video_field_property_info_callback(&$info, $entity_type, $field, $instance, $field_type) {
-  $property = &$info[$entity_type]['bundles'][$instance['bundle']]['properties'][$field['field_name']];
-  // Define a data structure so it's possible to deal with both the video title
-  // and URL.
-  $property['getter callback'] = 'entity_metadata_field_verbatim_get';
-  $property['setter callback'] = 'entity_metadata_field_verbatim_set';
-
-  // Auto-create the field item as soon as a property is set.
-  $property['auto creation'] = 'nuamps_video_field_item_create';
-
-  $property['property info'] = nuamps_video_field_item_property_info();
-  $property['property info']['url']['required'] = !$instance['settings']['url'];
-  $property['property info']['title']['required'] = ($instance['settings']['title'] == 'required');
-  $property['property info']['width']['required'] = TRUE;
-  $property['property info']['height']['required'] = TRUE;
-  if ($instance['settings']['title'] == 'none') {
-    unset($property['property info']['title']);
-  }
-
-  unset($property['query callback']);
-}
-
-/**
- * Callback for creating a new, empty video field item.
- *
- * @see nuamps_video_field_property_info_callback()
- */
-function nuamps_video_field_item_create() {
-  return array('url' => NULL);
-}
-
-/**
- * Defines info for the properties of the nuamps-video-field item data structure.
- */
-function nuamps_video_field_item_property_info() {
-  $properties['url'] = array(
-    'type' => 'uri',
-    'label' => t('The URL of the video.'),
-    'setter callback' => 'entity_property_verbatim_set',
-  );
-  $properties['width'] = array(
-    'type' => 'int',
-    'label' => t('The width of the video.'),
-    'setter callback' => 'entity_property_verbatim_set',
-  );
-  $properties['height'] = array(
-    'type' => 'int',
-    'label' => t('The height of the video.'),
-    'setter callback' => 'entity_property_verbatim_set',
-  );
-  return $properties;
-}
-
-/**
- * Implements hook_views_api().
- */
 function nuamps_video_views_api() {
   return array(
     'api' => 2,
-    'path' => drupal_get_path('module', 'nuamps_video') .'/views',
+    'path' => drupal_get_path('module', 'nuamps_video') . '/views',
   );
 }
 
-/**
- * Implements hook_from_alter().
- */
+/******************************************************************************/
 
-function nuamps_video_form_alter(&$form, &$form_state, $form_id) {
-  if (isset($form)) {
-      print($form);
-  }
-}
+//function hook_field_delete($entity_type, $entity, $field, $instance, $langcode, &$items) {
+//  list($id, $vid, $bundle) = entity_extract_ids($entity_type, $entity);
+//  foreach ($items as $delta => $item) {
+//    // For hook_file_references(), remember that this is being deleted.
+//    $item['file_field_name'] = $field['field_name'];
+//    // Pass in the ID of the object that is being removed so all references can
+//    // be counted in hook_file_references().
+//    $item['file_field_type'] = $entity_type;
+//    $item['file_field_id'] = $id;
+//    file_field_delete_file($item, $field, $entity_type, $id);
+//  }
+//}
+
+///**
+// * Implements hook_field_settings_form().
+// *
+// * Makes global settings for field
+// */
+//function nuamps_video_field_settings_form($field, $instance, $has_data) {
+//  $settings = $field['settings'];
+//  $form['max_length'] = array(
+//    '#type' => 'textfield',
+//    '#title' => t('Maxium length'),
+//    '#default_value' => $settings['max_length'],
+//    '#required' => TRUE,
+//    '#description' => t('The maximum length of the field in characters.'),
+//  );
+//  return $form;
+//}
