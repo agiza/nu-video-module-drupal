@@ -17,6 +17,12 @@ function nuamps_video_field_schema($field) {
         'not null' => FALSE,
         'sortable' => TRUE
       ),
+      'rtmp_url' => array(
+        'type' => 'varchar',
+        'length' => 2048, // Maximum URLs length.
+        'not null' => FALSE,
+        'sortable' => TRUE
+      ),      
       'width' => array(
         'type' => 'int',
         'size' => 'medium',

@@ -1,6 +1,18 @@
 <?php
 
+//    require_once 'ffmpeg-php/FFmpegAutoloader.php';
+//    $movie = new FFmpegMovie($item['url']);
+//    
+//    $movie->getDuration();
+//    $movie->getVideoCodec();
+//    $movie->getAudioCodec();
+//    $movie->getFrameRate(); 
+//    $movie->getFrameHeight();
+//    $movie->getFrameWidth();
+
 // http://www.longtailvideo.com/support/jw-player/jw-player-for-flash-v5/12536/configuration-options
+
+
 
 define('VIDEO_URL_MAX_LENGTH', 2048); // must match value in nuamps_video.install
 
@@ -43,21 +55,22 @@ function nuamps_video_field_info() {
     'nuamps_video_field' => array(
       'label' => t('NUAMPS Video'),
       'description' => t('Store a width, height, and URL in the database to
-        assemble a video.'),
+        assemble a video.'), 
       'settings' => array('max_length' => 2048),
       'default_widget' => 'nuamps_video_field',
       'default_formatter' => 'nuamps_video_default',
       'instance_settings' => array(
-        'width' => DEFAULT_WIDTH,
-        'height' => DEFAULT_HEIGHT,
-        'image' => '',
-        'class' => DEFAULT_CLASS,
-        'fallback' => DEFAULT_FALLBACK,
+        'width' => DEFAULT_WIDTH, // changes width of video
+        'height' => DEFAULT_HEIGHT, // changes height of video
+        'image' => '', // changes the image shown before the video is played
+        'class' => DEFAULT_CLASS, // the div class that surrounds the video
+        'fallback' => DEFAULT_FALLBACK, // either html5 or flash. 
+                                        // the fallback kicks in when the default 
+                                        // is not available
         'override' => DEFAULT_OVERRIDE,
         'autostart' => DEFAULT_AUTOSTART,
         'showmute' => DEFAULT_DISPLAY_SHOWMUTE,
         'controlbar_position' => DEFAULT_CONTROLBAR_POSITION,
-        //'enable_tokens' => 0,
       ),
     ),
   );
@@ -68,9 +81,9 @@ function nuamps_video_field_info() {
  */
 function nuamps_video_field_widget_info() {
   return array(
-    'nuamps_video_field' => array(
-      'label' => 'NUAMPS Video',
-      'field types' => array('nuamps_video_field'),
+      'nuamps_video_field' => array(
+        'label' => 'NUAMPS Video',
+        'field types' => array('nuamps_video_field'),
     ),
   );
 }
@@ -130,7 +143,7 @@ function nuamps_video_field_instance_settings_form($field, $instance) {
 
   $form['fallback'] = array(
     '#type' => 'radios',
-    '#title' => t('Fallback'),
+    '#title' => t('Fallback format if the default format does not work.'),
     '#options' => array(
       'flash' => t('Flash (Default = HTML5, Fallback = Flash)'),
       'html' => t('HTML5 (Default = Flash, Fallback = HTML5)')
@@ -140,7 +153,7 @@ function nuamps_video_field_instance_settings_form($field, $instance) {
 
   $form['override'] = array(
     '#type' => 'radios',
-    '#title' => t('Override'),
+    '#title' => t('Allow individual content to override content type settings.'),
     '#options' => array(
       'true' => t('Allow override'),
       'false' => t('Do not allow override')
@@ -150,17 +163,17 @@ function nuamps_video_field_instance_settings_form($field, $instance) {
 
   $form['autostart'] = array(
     '#type' => 'radios',
-    '#title' => t('Autostart'),
+    '#title' => t('Autostart video on load.'),
     '#options' => array(
-      'true' => t('Allow autostart'),
-      'false' => t('Do not allow autostart')
+      'true' => t('Autostart'),
+      'false' => t('Do not autostart')
       ),
     '#default_value' => $instance_settings['autostart'],
   );
 
   $form['showmute'] = array(
     '#type' => 'radios',
-    '#title' => t('Show Mute'),
+    '#title' => t('Show mute symbol when video is paused instead of the play symbol.'),
     '#options' => array(
       'true' => t('Allow showmute'),
       'false' => t('Do not allow showmute')
@@ -170,7 +183,7 @@ function nuamps_video_field_instance_settings_form($field, $instance) {
 
   $form['controlbar_position'] = array(
     '#type' => 'radios',
-    '#title' => t('Controlbar Position'),
+    '#title' => t('Change controlbar position.'),
     '#options' => array(
       'bottom' => t('bottom'),
       'top' => t('top'),
@@ -294,8 +307,6 @@ function nuamps_video_field_is_empty($item, $field) {
 
 /**
  * Implements hook_field_presave().
- * 
- * 
  */
 function nuamps_video_field_presave($entity_type, $entity, $field, $instance, $langcode, &$items) {
   foreach ($items as $delta => $value) {
@@ -307,8 +318,6 @@ function nuamps_video_field_presave($entity_type, $entity, $field, $instance, $l
 
 /**
  * Implements hook_theme().
- * 
- * 
  */
 function nuamps_video_theme($existing, $type, $theme, $path) {
   return array(
@@ -319,14 +328,13 @@ function nuamps_video_theme($existing, $type, $theme, $path) {
 
 /**
  * FAPI theme for an individual text elements.
- * 
- * 
  */
 function theme_nuamps_video_field($vars) {
   $element = $vars['element'];
   $output  = '';
   $output .= '<div class="nuamps-video-field-subrow clearfix">';
   $output .= '<div class="nuamps-video-field-url">' . drupal_render($element['url']) . '</div>';
+  $output .= '<div class="nuamps-video-field-rtmp-url">' . drupal_render($element['rtmp_url']) . '</div>';
   if (isset($element['width'])) $output .= '<div class="nuamps-video-field-width">' . drupal_render($element['width']) . '</div>';
   if (isset($element['height'])) $output .= '<div class="nuamps-video-field-height">' . drupal_render($element['height']) . '</div>';
   if (isset($element['image'])) $output .= '<div class="nuamps-video-field-image">' . drupal_render($element['image']) . '</div>';
@@ -341,8 +349,6 @@ function theme_nuamps_video_field($vars) {
 
 /**
  * Implements hook_element_info().
- * 
- * 
  */
 function nuamps_video_element_info() {
   $elements = array();
@@ -358,10 +364,6 @@ function nuamps_video_element_info() {
 /**
  * Process the video type element before displaying the field.
  *
- * Build the form element. When creating a form using FAPI #process,
- * note that $element['#value'] is already set.
- *
- * The $fields array is in $complete_form['#field_info'][$element['#field_name']].
  */
 function nuamps_video_field_process($element, $form_state, $complete_form) {
 
@@ -375,6 +377,15 @@ function nuamps_video_field_process($element, $form_state, $complete_form) {
     '#description' => t('Enter URL for jwplayer.'),
     '#required' => TRUE,
     '#default_value' => isset($element['#value']['url']) ? $element['#value']['url'] : NULL,
+  );
+  
+  $element['rtmp_url'] = array(
+    '#type' => 'textfield',
+    '#maxlength' => VIDEO_URL_MAX_LENGTH,
+    '#title' => t('RTMP URL'),
+    '#description' => t('Enter RTMP URL for jwplayer.'),
+    '#required' => FALSE,
+    '#default_value' => isset($element['#value']['rtmp_url']) ? $element['#value']['rtmp_url'] : NULL,
   );
 
   if ($instance_settings['override'] == "true") {
@@ -460,12 +471,14 @@ function nuamps_video_field_formatter_info() {
 /**
  * Implements hook_field_formatter_view().
  */
-function nuamps_video_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display) {
+function nuamps_video_field_formatter_view($entity_type, $entity, $field, 
+    $instance, $langcode, $items, $display) {
   $elements = array();
 
   foreach ($items as $delta => $item) {
     $elements[$delta] = array(
-      '#markup' => theme('nuamps_video_formatter_' . $display['type'], array('element' => $item, 'field' => $instance)),
+      '#markup' => theme('nuamps_video_formatter_' . $display['type'], 
+          array('element' => $item, 'field' => $instance)),
     );
   }
   return $elements;
@@ -489,7 +502,7 @@ function theme_nuamps_video_formatter_nuamps_video_default($vars) {
   $flash = '{ type: "flash", src: "' . base_path() . "sites/all/libraries/" . 'jwplayer/player.swf" }';
   $html  = '{ type: "html5", config: { provider: "video", file: "' . $vars['element']['url'] . '"}}';
 
-  $output  = '<video id="container' . $containerID . '" src="' . $vars['element']['url'] . '" style="z-index: 11000" controls="visible">Loading the player ...</video>';
+  $output  = '<video id="container' . $containerID . '" src="' . $vars['element']['url'] . '" style="z-index:1000;" controls="visible">Loading the player ...</video>';
   $output .= '<script>
                 jwplayer("container' . $containerID . '").setup({
                   \'file\': "'  .  $vars['element']['url'] . '",
@@ -504,10 +517,46 @@ function theme_nuamps_video_formatter_nuamps_video_default($vars) {
   $output .=      ']
                 });
               </script>';
+  $output .= '<div class="overlay"></div>';
+  $output .= '<style>
+              div.overlay {
+                //opacity:0.9;
+                //background-color:#000;
+                background: rgba(0, 0, 0, 0.9); 
+                width:100%;
+                height:100%;
+                z-index:100;
+                top:0;
+                left:0;
+                position:fixed; 
+                visibility:hidden;
+                pointer-events:none;
+              }
+              </style>';
+  $output .= "<a class= 'toggleOverlay' style='position:relative; z-index:1000;' href=\"javascript:
+                
+                document.getElementById('container" . $containerID . "_wrapper').style.zIndex = 1000;
+                
+                if (document.getElementsByClassName('overlay')[0].style.visibility == 'visible') {
+                  document.getElementsByClassName('overlay')[0].style.visibility = 'hidden';
+                  document.getElementsByClassName('toggleOverlay')[0].innerHTML = 'Cinema Mode';
+                }
+                else {
+                  document.getElementsByClassName('overlay')[0].style.visibility = 'visible';
+                  document.getElementsByClassName('toggleOverlay')[0].innerHTML = 'Regular Mode';
+                }
+                
+              \" >Cinema Mode</a>";
 
   return $output;
 }
 
+/*
+ * Implements hook_form_alter().
+ * 
+ * Removes the description and default value widget to make the settings form
+ * prettier.
+ */
 function nuamps_video_form_alter(&$form, &$form_state, $form_id) {
   if (isset($form)) {
       if ($form['#id'] == 'field-ui-field-edit-form'
@@ -518,28 +567,14 @@ function nuamps_video_form_alter(&$form, &$form_state, $form_id) {
   }
 }
 
+/*
+ * Implements hook_views_api().
+ * 
+ * Enables creation of views from the video field.
+ */
 function nuamps_video_views_api() {
   return array(
     'api' => 2,
     'path' => drupal_get_path('module', 'nuamps_video') . '/views',
   );
 }
-
-/******************************************************************************/
-
-///**
-// * Implements hook_field_settings_form().
-// *
-// * Makes global settings for field
-// */
-//function nuamps_video_field_settings_form($field, $instance, $has_data) {
-//  $settings = $field['settings'];
-//  $form['max_length'] = array(
-//    '#type' => 'textfield',
-//    '#title' => t('Maxium length'),
-//    '#default_value' => $settings['max_length'],
-//    '#required' => TRUE,
-//    '#description' => t('The maximum length of the field in characters.'),
-//  );
-//  return $form;
-//}
